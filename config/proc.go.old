@@ -298,8 +298,8 @@ func (p *Proc) String() string {
 	Killed: %t
 	`
 	return fmt.Sprintf(res, p.Name, p.Command, p.NumProcs, p.Umask, p.Outfile,
-		p.Errfile, p.WorkingDir, p.Env, p.Status, p.Autostart, p.Autorestart,
-		p.ExitCodes, p.StartTime, p.StartRetries, p.StopSignal, p.StopTime, p.Killed)
+	p.Errfile, p.WorkingDir, p.Env, p.Status, p.Autostart, p.Autorestart,
+	p.ExitCodes, p.StartTime, p.StartRetries, p.StopSignal, p.StopTime, p.Killed)
 }
 
 func (p *Proc) StrStatus() string {
@@ -308,7 +308,7 @@ func (p *Proc) StrStatus() string {
 	if status == Running || status == Starting {
 		st = "%s: %s [%d] (%s) %s\n"
 		return fmt.Sprintf(st, p.Name, status, p.Cmd.Process.Pid,
-			time.Since(p.Time).String(), p.Command)
+		time.Since(p.Time).String(), p.Command)
 	} else {
 		st = "%s : %s: %s\n"
 		return fmt.Sprintf(st, p.Name, status, p.Command)
