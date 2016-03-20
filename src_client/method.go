@@ -6,33 +6,39 @@ import (
 	"net/rpc"
 	"os"
 	"strconv"
+	"taskmaster/common"
 )
 
 func GetStatus(client *rpc.Client, commands []string) error {
-	var ret []interface{}
+	var ret []common.ProcStatus
+	if commands == nil {
+		fmt.Fprint(os.Stderr, "Missing process parameter\n")
+		return errors.New("Missing process parameter")
+	}
 	err := client.Call("Handler.GetStatus", commands, &ret)
 	if err != nil {
 		return err
 	}
 	for _, p := range ret {
-		status, ok := p.(ProcStatus)
-		if !ok {
-			return errors.New("Failed to get status")
-		}
-		fmt.Printf(status.String())
+		fmt.Printf(p.String())
 	}
 	return nil
 }
 
 func StartProc(client *rpc.Client, commands []string) error {
 	var ret []interface{}
-	call := client.Go("Handler.StartProc", commands, &ret, nil)
+	if commands == nil {
+		fmt.Fprint(os.Stderr, "Missing process parameter\n")
+		return errors.New("Missing process parameter")
+	}
+	method := common.ServerMethod{MethodName: "StartProc", Params: commands}
+	call := client.Go("Handler.AddMethod", method, &ret, nil)
 	go func() {
 		resp := <-call.Done
 		if resp.Error != nil {
 			fmt.Fprintf(os.Stderr, resp.Error.Error())
 		} else {
-			st, ok := resp.Reply.([]ProcStatus)
+			st, ok := resp.Reply.([]common.ProcStatus)
 			if ok {
 				for _, status := range st {
 					fmt.Printf("Started %s with pid %d\n", status.Name, status.Pid)
@@ -45,13 +51,18 @@ func StartProc(client *rpc.Client, commands []string) error {
 
 func StopProc(client *rpc.Client, commands []string) error {
 	var ret []interface{}
-	call := client.Go("Handler.StartProc", commands, &ret, nil)
+	if commands == nil {
+		fmt.Fprint(os.Stderr, "Missing process parameter\n")
+		return errors.New("Missing process parameter")
+	}
+	method := common.ServerMethod{MethodName: "StopProc", Params: commands}
+	call := client.Go("Handler.AddMethod", method, &ret, nil)
 	go func() {
 		resp := <-call.Done
 		if resp.Error != nil {
 			fmt.Fprintf(os.Stderr, resp.Error.Error())
 		} else {
-			st, ok := resp.Reply.([]ProcStatus)
+			st, ok := resp.Reply.([]common.ProcStatus)
 			if ok {
 				for _, status := range st {
 					fmt.Printf("Stopped %s\n", status.Name)
@@ -64,13 +75,21 @@ func StopProc(client *rpc.Client, commands []string) error {
 
 func RestartProc(client *rpc.Client, commands []string) error {
 	var list []string
+	var err error
+	if commands == nil {
+		fmt.Fprint(os.Stderr, "Missing process parameter\n")
+		return errors.New("Missing process parameter")
+	}
 	if len(commands) == 1 && commands[0] == "all" {
-		list, err := LoadProcNames(client)
+		list, err = LoadProcNames(client)
+		if err != nil {
+			return err
+		}
 	} else {
 		list = commands
 	}
 	for _, name := range list {
-		err := StopProc(client, []string{name})
+		err = StopProc(client, []string{name})
 		if err == nil {
 			err = StartProc(client, []string{name})
 		}
@@ -84,7 +103,8 @@ func RestartProc(client *rpc.Client, commands []string) error {
 
 func ShutDownServ(client *rpc.Client, commands []string) error {
 	var ret string
-	err := client.Call("Handler.Shutdown", nil, &ret)
+	method := common.ServerMethod{MethodName: "Shutdown", Params: commands}
+	err := client.Call("Handler.AddMethod", method, &ret)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error())
 		return err

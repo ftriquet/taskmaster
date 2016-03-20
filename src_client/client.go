@@ -12,7 +12,7 @@ import (
 
 func LoadProcNames(client *rpc.Client) ([]string, error) {
 	var list []string
-	err := client.Call("Handler.GetProcList", nil, &list)
+	err := client.Call("Handler.GetProcList", &list, &list)
 	if err != nil {
 		return nil, err
 	}
@@ -21,7 +21,7 @@ func LoadProcNames(client *rpc.Client) ([]string, error) {
 
 type MethodFunc func(*rpc.Client, []string) error
 
-const (
+var (
 	methodMap = map[string]MethodFunc{
 		"status":   GetStatus,
 		"start":    StartProc,
@@ -39,12 +39,13 @@ func main() {
 
 	client, err := rpc.DialHTTP("tcp", "127.0.0.1:"+*port)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n")
+		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n%s", err)
 		os.Exit(1)
 	}
 	procList, err := LoadProcNames(client)
+	fmt.Printf("%+v\n", procList)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n")
+		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n%s", err)
 		os.Exit(1)
 	}
 
@@ -63,6 +64,14 @@ func main() {
 	})
 
 	for {
-
+		line, _ := line.Prompt("taskmaster> ")
+		if line != "" {
+			params := strings.Fields(line)
+			f := methodMap[params[0]]
+			err := f(client, params[1:])
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+		}
 	}
 }
