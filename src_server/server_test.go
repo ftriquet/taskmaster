@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/sha256"
-	"fmt"
 	"taskmaster/common"
 	"testing"
 
@@ -29,6 +27,7 @@ func TestLoadFile(t *testing.T) {
 	assert.Equal(t, proc.Command, "/usr/bin/tail -f /tmp/FICHIER")
 	assert.Equal(t, proc.Outfile, "/tmp/tail_log_out")
 	assert.Equal(t, proc.Errfile, "/tmp/tail_log_err")
+	assert.Equal(t, 4, len(g_procs))
 	if g_procs["TailDeFou0"].Umask != 022 {
 		t.Errorf("LOL T NULL")
 	}
@@ -51,8 +50,10 @@ func TestEmptyFields(t *testing.T) {
 }
 
 func TestPassword(t *testing.T) {
-	hash := sha256.New()
-	password = fmt.Sprintf("%x", hash.Sum([]byte("motdepasse")))
+	err := LoadFile("../config/password.json")
+	if err != nil {
+		t.Fatal()
+	}
 	t.Log("Test mot de passe correct (motdepasse)\n")
 	assert.True(t, checkPassword(true))
 	t.Log("Test mot de passe incorrect (motdepasse)\n")

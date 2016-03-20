@@ -67,21 +67,31 @@ func loadFileSlice(filename string) ([]*common.Process, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	wrapper := struct {
+		Password string
+		ProgList []common.Process
+	}{"", nil}
+
 	var programs []common.Process
 	var resPtr []*common.Process
-	err = json.Unmarshal(configFile, &programs)
+	err = json.Unmarshal(configFile, &wrapper)
 	if err != nil {
 		return nil, err
 	}
+	programs = wrapper.ProgList
+	password = wrapper.Password
 	size := len(programs)
 	programs = make([]common.Process, size)
 	for i := 0; i < size; i++ {
 		programs[i] = common.NewProc()
 	}
-	err = json.Unmarshal(configFile, &programs)
+	wrapper.ProgList = programs
+	err = json.Unmarshal(configFile, &wrapper)
 	if err != nil {
 		return nil, err
 	}
+	programs = wrapper.ProgList
 	programs = CreateMultiProcess(programs)
 	for i := range programs {
 		if programs[i].IsValid() {
