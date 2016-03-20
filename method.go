@@ -1,0 +1,114 @@
+package main
+
+import (
+	"errors"
+	"fmt"
+	"net/rpc"
+	"os"
+	"strconv"
+)
+
+func GetStatus(client *rpc.Client, commands []string) error {
+	var ret []interface{}
+	err := client.Call("Handler.GetStatus", commands, &ret)
+	if err != nil {
+		return err
+	}
+	for _, p := range ret {
+		status, ok := p.(ProcStatus)
+		if !ok {
+			return errors.New("Failed to get status")
+		}
+		fmt.Printf(status.String())
+	}
+	return nil
+}
+
+func StartProc(client *rpc.Client, commands []string) error {
+	var ret []interface{}
+	call := client.Go("Handler.StartProc", commands, &ret, nil)
+	go func() {
+		resp := <-call.Done
+		if resp.Error != nil {
+			fmt.Fprintf(os.Stderr, resp.Error.Error())
+		} else {
+			st, ok := resp.Reply.([]ProcStatus)
+			if ok {
+				for _, status := range st {
+					fmt.Printf("Started %s with pid %d\n", status.Name, status.Pid)
+				}
+			}
+		}
+	}()
+	return nil
+}
+
+func StopProc(client *rpc.Client, commands []string) error {
+	var ret []interface{}
+	call := client.Go("Handler.StartProc", commands, &ret, nil)
+	go func() {
+		resp := <-call.Done
+		if resp.Error != nil {
+			fmt.Fprintf(os.Stderr, resp.Error.Error())
+		} else {
+			st, ok := resp.Reply.([]ProcStatus)
+			if ok {
+				for _, status := range st {
+					fmt.Printf("Stopped %s\n", status.Name)
+				}
+			}
+		}
+	}()
+	return nil
+}
+
+func RestartProc(client *rpc.Client, commands []string) error {
+	var list []string
+	if len(commands) == 1 && commands[0] == "all" {
+		list, err := LoadProcNames(client)
+	} else {
+		list = commands
+	}
+	for _, name := range list {
+		err := StopProc(client, []string{name})
+		if err == nil {
+			err = StartProc(client, []string{name})
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, err.Error())
+			return err
+		}
+	}
+	return nil
+}
+
+func ShutDownServ(client *rpc.Client, commands []string) error {
+	var ret string
+	err := client.Call("Handler.Shutdown", nil, &ret)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, err.Error())
+		return err
+	}
+	fmt.Println(ret)
+	return nil
+}
+
+func GetLog(client *rpc.Client, commands []string) error {
+	var ret []string
+	if commands != nil {
+		nbLines, err := strconv.Atoi(commands[0])
+		if err != nil || nbLines <= 0 {
+			return errors.New(fmt.Sprintf("Invalid number: %s\n", commands[0]))
+		}
+	}
+	err := client.Call("Handler.GetLog", commands, &ret)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, err.Error())
+		return err
+	} else {
+		for _, log := range ret {
+			fmt.Println(log)
+		}
+	}
+	return nil
+}

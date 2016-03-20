@@ -129,3 +129,7 @@ func (p *Process) StrStatus() string {
 func (p *Process) Status() ProcStatus {
 	return p.ProcStatus
 }
+
+func (p *ProcStatus) String() string {
+	return fmt.Sprintf("%s: %s [%d] %s\n", p.Name, p.State, p.Pid, p.Runtime.String())
+}
