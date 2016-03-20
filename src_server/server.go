@@ -1,8 +1,10 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -14,13 +16,16 @@ import (
 	"syscall"
 	"taskmaster/common"
 	"taskmaster/log"
+
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 type MethodFunc func([]string, *interface{}) error
 
 var (
-	g_procs map[string]*common.Process
-	lock    = new(sync.RWMutex)
+	g_procs  map[string]*common.Process
+	lock     = new(sync.RWMutex)
+	password string
 )
 
 type Handler struct {
@@ -156,10 +161,48 @@ func (h *Handler) init(config, log string) {
 	h.configFile = config
 }
 
+func generateHash() {
+	fmt.Println("Password:")
+	bytepass, err := terminal.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to generate hash\n")
+		return
+	}
+	hash := sha256.New()
+	fmt.Printf("%x\n", hash.Sum(bytepass))
+}
+
+func checkPassword(testing bool) bool {
+	fmt.Println("Password:")
+	var bytepass []byte
+	var err error
+	if testing {
+		bytepass, err = terminal.ReadPassword(int(syscall.Stderr))
+	} else {
+		bytepass, err = terminal.ReadPassword(int(syscall.Stdin))
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to read password\n")
+		return false
+	}
+	hash := sha256.New()
+	hashedPass := fmt.Sprintf("%x", hash.Sum(bytepass))
+	if hashedPass == password {
+		return true
+	}
+	return false
+}
+
 func main() {
 	configFile := flag.String("c", "./config.json", "Config-file name")
 	logfile := flag.String("l", "./taskmaster_logs", "Taskmaster's log file")
+	genPassword := flag.Bool("p", false, "Generate password hash")
 	flag.Parse()
+
+	if *genPassword {
+		generateHash()
+		return
+	}
 	h := new(Handler)
 	h.init(*configFile, *logfile)
 
