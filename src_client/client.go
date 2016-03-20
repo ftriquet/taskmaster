@@ -39,13 +39,13 @@ func main() {
 
 	client, err := rpc.DialHTTP("tcp", "127.0.0.1:"+*port)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n%s", err)
+		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n%s\n", err)
 		os.Exit(1)
 	}
 	procList, err := LoadProcNames(client)
 	fmt.Printf("%+v\n", procList)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n%s", err)
+		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n%s\n", err)
 		os.Exit(1)
 	}
 
@@ -64,13 +64,21 @@ func main() {
 	})
 
 	for {
-		line, _ := line.Prompt("taskmaster> ")
-		if line != "" {
-			params := strings.Fields(line)
-			f := methodMap[params[0]]
-			err := f(client, params[1:])
-			if err != nil {
-				fmt.Println(err.Error())
+		l, _ := line.Prompt("taskmaster> ")
+		if l != "" {
+			params := strings.Fields(l)
+			f, exists := methodMap[params[0]]
+			if exists {
+				err := f(client, params[1:])
+				if err != nil {
+					fmt.Println(err.Error())
+				}
+			} else {
+				fmt.Fprintf(os.Stderr, "Unknown command: %s\n", params[0])
+			}
+			if params[0] == "quit" {
+				line.Close()
+				break
 			}
 		}
 	}

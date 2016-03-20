@@ -125,15 +125,15 @@ func CreateMultiProcess(progs []common.Process) []common.Process {
 
 func (h *Handler) GetStatus(commands []string, result *[]common.ProcStatus) error {
 	res := []common.ProcStatus{}
-	if len(commands) == 1 && commands[0] == "all" {
+	if commands == nil || (len(commands) == 1 && commands[0] == "all") {
 		for _, proc := range g_procs {
 			res = append(res, proc.ProcStatus)
 		}
 	} else {
 		for _, proc := range commands {
-			proc, exists := g_procs[proc]
+			p, exists := g_procs[proc]
 			if exists {
-				res = append(res, proc.ProcStatus)
+				res = append(res, p.ProcStatus)
 			} else {
 				logw.Warning("%s: Process not found", proc)
 			}
