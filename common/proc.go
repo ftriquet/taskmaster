@@ -159,5 +159,6 @@ func (p *Process) Start(started, processEnd chan bool) {
 	p.Pid = p.Cmd.Process.Pid
 	started <- true
 	p.Cmd.Wait()
+	p.Pid = 0
 	processEnd <- true
 }

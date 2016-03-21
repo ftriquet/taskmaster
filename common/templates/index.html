@@ -1,0 +1,42 @@
+<html>
+	<head>
+		<title>Taskmaster</title>
+	</head>
+
+	<body>
+		<h1>Taskmaster</h1>
+
+		<ul>
+			<li><a href="/">Refresh</a></li>
+			<li><a href="/action/restart/all">Restart</a></li>
+			<li><a href="/action/stop/all">Restart</a></li>
+		</ul>
+
+		<table border="1">
+			<thead>
+				<tr>
+					<td>Name</td>
+					<td>State</td>
+					<td>Pid</td>
+					<td>Action</td>
+				</tr>
+			</thead>
+			<tbody>
+				{{range .}}
+					<tr>
+						<td>{{.Name}}</td>
+						<td>{{.State}}</td>
+						<td>{{.Pid}}</td>
+						<td>
+							<ul>
+								<li><a href="start/{{.Name}}">Start</a></li>
+								<li><a href="stop/{{.Name}}">Stop</a></li>
+								<li><a href="restart/{{.Name}}">Restart</a></li>
+							</ul>
+						</td>
+					</tr>
+				{{end}}
+			</tbody>
+		</table>
+	</body>
+</html>

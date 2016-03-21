@@ -21,7 +21,6 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-//type MethodFunc func([]string, *interface{}) error
 type MethodFunc func([]string, *[]common.ProcStatus) error
 
 var (
@@ -180,6 +179,8 @@ func (h *Handler) init(config, log string) {
 	h.configFile = config
 	h.Actions = make(chan common.ServerMethod)
 	h.Response = make(chan error)
+	handlerMap["start"] = h.StartProc
+	handlerMap["stop"] = h.StopProc
 }
 
 func generateHash() {
@@ -257,9 +258,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	http.HandleFunc("/", generateRenderer(h))
 	err = http.Serve(listener, nil)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("LOOP")
 }
