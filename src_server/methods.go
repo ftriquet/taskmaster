@@ -25,6 +25,7 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 		go proc.Start(started, processEnd)
 		ok := <-started
 		if ok {
+			state <- nil
 			select {
 			case <-timeout:
 				//succes
@@ -55,6 +56,7 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 				break
 			}
 		} else {
+			state <- errors.New(fmt.Sprintf("Unable to start process %s", proc.Name))
 			logw.Warning("Unable to start process %s", proc.Name)
 		}
 	}
@@ -78,9 +80,11 @@ func (h *Handler) StartProc(params []string, res *[]common.ProcStatus) error {
 	ok := make(chan error)
 	go h.handleProcess(proc, ok)
 	err := <-ok
+	statuses = []common.ProcStatus{proc.ProcStatus}
 	if err != nil {
 		return err
 	}
 	*res = statuses
+	fmt.Printf("Send: %+v\n", statuses)
 	return nil
 }

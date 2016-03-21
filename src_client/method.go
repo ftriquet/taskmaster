@@ -26,7 +26,7 @@ func GetStatus(client *rpc.Client, commands []string) error {
 }
 
 func StartProc(client *rpc.Client, commands []string) error {
-	var ret []interface{}
+	var ret []common.ProcStatus
 	if commands == nil {
 		fmt.Fprint(os.Stderr, "Missing process parameter\n")
 		return errors.New("Missing process parameter")
@@ -38,8 +38,9 @@ func StartProc(client *rpc.Client, commands []string) error {
 		if resp.Error != nil {
 			fmt.Fprintf(os.Stderr, resp.Error.Error())
 		} else {
-			st, ok := resp.Reply.([]common.ProcStatus)
+			stptr, ok := resp.Reply.(*[]common.ProcStatus)
 			if ok {
+				st := *stptr
 				for _, status := range st {
 					fmt.Printf("Started %s with pid %d\n", status.Name, status.Pid)
 				}
@@ -50,7 +51,7 @@ func StartProc(client *rpc.Client, commands []string) error {
 }
 
 func StopProc(client *rpc.Client, commands []string) error {
-	var ret []interface{}
+	var ret []common.ProcStatus
 	if commands == nil {
 		fmt.Fprint(os.Stderr, "Missing process parameter\n")
 		return errors.New("Missing process parameter")

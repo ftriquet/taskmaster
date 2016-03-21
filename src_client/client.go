@@ -68,6 +68,7 @@ func main() {
 		if l != "" {
 			params := strings.Fields(l)
 			if params[0] == "quit" {
+				client.Close()
 				line.Close()
 				break
 			}

@@ -167,6 +167,7 @@ func (h *Handler) AddMethod(action common.ServerMethod, res *[]common.ProcStatus
 	}
 	action.Result = res
 	h.Actions <- action
+	fmt.Println("Action sent, waiting for response")
 	return <-h.Response
 }
 
@@ -177,6 +178,8 @@ func (h *Handler) init(config, log string) {
 	}
 	h.logfile = log
 	h.configFile = config
+	h.Actions = make(chan common.ServerMethod)
+	h.Response = make(chan error)
 }
 
 func generateHash() {
@@ -224,6 +227,17 @@ func main() {
 	h := new(Handler)
 	h.init(*configFile, *logfile)
 
+	go func() {
+		for {
+			//fmt.Println("Waiting for action")
+			action := <-h.Actions //(Servermethod)
+			//fmt.Printf("Action received: %s\n", action.MethodName)
+			err := action.Method(action.Params, action.Result)
+			//fmt.Println("DONE")
+			h.Response <- err
+			//fmt.Println("Response sent")
+		}
+	}()
 	logw.InitSilent()
 	err := logw.InitRotatingLog(h.logfile, 65535, 8)
 	if err != nil {
@@ -233,8 +247,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	logw.Info("SWAG")
 
 	err = rpc.Register(h)
 	if err != nil {
@@ -250,9 +262,4 @@ func main() {
 		panic(err)
 	}
 	fmt.Println("LOOP")
-	for {
-		action := <-h.Actions //(Servermethod)
-		logw.Info("Action received: %s", action.MethodName)
-		h.Response <- action.Method(action.Params, action.Result)
-	}
 }
