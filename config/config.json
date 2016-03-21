@@ -1,5 +1,4 @@
 {
-	"Password": "lolol",
 	"ProgList":
 	[
 		{
@@ -12,7 +11,8 @@
 			"StopSignal": 2,
 			"Autostart": true,
 			"ExitCodes": [0],
-			"AutoRestart": "Unexpected"
+			"AutoRestart": "Unexpected",
+			"StartRetries": 5
 		}
 	]
 }

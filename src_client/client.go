@@ -67,6 +67,10 @@ func main() {
 		l, _ := line.Prompt("taskmaster> ")
 		if l != "" {
 			params := strings.Fields(l)
+			if params[0] == "quit" {
+				line.Close()
+				break
+			}
 			f, exists := methodMap[params[0]]
 			if exists {
 				err := f(client, params[1:])
@@ -75,10 +79,6 @@ func main() {
 				}
 			} else {
 				fmt.Fprintf(os.Stderr, "Unknown command: %s\n", params[0])
-			}
-			if params[0] == "quit" {
-				line.Close()
-				break
 			}
 		}
 	}

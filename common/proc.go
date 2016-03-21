@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"taskmaster/log"
 	"time"
 )
 
@@ -132,4 +133,25 @@ func (p *Process) Status() ProcStatus {
 
 func (p *ProcStatus) String() string {
 	return fmt.Sprintf("%s: %s [%d] %s\n", p.Name, p.State, p.Pid, p.Runtime.String())
+}
+
+func (p *Process) Start(started, processEnd chan bool) {
+	err := p.Init()
+	if err != nil {
+		logw.Error(err.Error())
+		return
+	}
+	if p.State != Starting {
+		logw.Error("Process %s already started", p.Name)
+		return
+	}
+	syscall.Umask(int(p.Umask))
+	err = p.Cmd.Start()
+	if err != nil {
+		started <- false
+		return
+	}
+	started <- true
+	p.Cmd.Wait()
+	processEnd <- true
 }

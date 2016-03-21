@@ -12,6 +12,8 @@ const (
 	Running                = "RUNNING"
 	Starting               = "STARTING"
 	Fatal                  = "FATAL"
+	Exited                 = "EXITED"
+	Stopping               = "STOPPING"
 	Never                  = "Never"
 	Always                 = "Always"
 	Unexpected             = "Unexpected"
@@ -61,6 +63,6 @@ type ProcStatus struct {
 type ServerMethod struct {
 	MethodName string
 	Params     []string
-	Method     func([]string, *interface{}) error
-	Result     *interface{}
+	Method     func([]string, *[]ProcStatus) error
+	Result     *[]ProcStatus
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -20,7 +21,8 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-type MethodFunc func([]string, *interface{}) error
+//type MethodFunc func([]string, *interface{}) error
+type MethodFunc func([]string, *[]common.ProcStatus) error
 
 var (
 	g_procs  map[string]*common.Process
@@ -71,7 +73,7 @@ func loadFileSlice(filename string) ([]*common.Process, error) {
 	wrapper := struct {
 		Password string
 		ProgList []common.Process
-	}{"", nil}
+	}{}
 
 	var programs []common.Process
 	var resPtr []*common.Process
@@ -158,15 +160,21 @@ func (h *Handler) GetStatus(commands []string, result *[]common.ProcStatus) erro
 	return nil
 }
 
-func (h *Handler) AddMethod(m common.ServerMethod, res *interface{}) error {
-	m.Method = h.methodMap[m.MethodName]
-	m.Result = res
-	h.Actions <- m
+func (h *Handler) AddMethod(action common.ServerMethod, res *[]common.ProcStatus) error {
+	action.Method = h.methodMap[action.MethodName]
+	if action.Method == nil {
+		return errors.New("No such method")
+	}
+	action.Result = res
+	h.Actions <- action
 	return <-h.Response
 }
 
 func (h *Handler) init(config, log string) {
-	h.methodMap = map[string]MethodFunc{}
+	h.methodMap = map[string]MethodFunc{
+		"StartProc": h.StartProc,
+		//"StopProc":  h.StopProc,
+	}
 	h.logfile = log
 	h.configFile = config
 }
@@ -217,10 +225,18 @@ func main() {
 	h.init(*configFile, *logfile)
 
 	logw.InitSilent()
-	logw.InitRotatingLog(h.logfile, 65535, 8)
-	LoadFile(h.configFile)
+	err := logw.InitRotatingLog(h.logfile, 65535, 8)
+	if err != nil {
+		panic(err)
+	}
+	err = LoadFile(h.configFile)
+	if err != nil {
+		panic(err)
+	}
 
-	err := rpc.Register(h)
+	logw.Info("SWAG")
+
+	err = rpc.Register(h)
 	if err != nil {
 		panic(err)
 	}
@@ -233,7 +249,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("LOOP")
 	for {
-
+		action := <-h.Actions //(Servermethod)
+		logw.Info("Action received: %s", action.MethodName)
+		h.Response <- action.Method(action.Params, action.Result)
 	}
 }
