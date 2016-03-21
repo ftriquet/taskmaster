@@ -119,7 +119,7 @@ func (p *Process) StrStatus() string {
 	if status == Running || status == Starting {
 		st = "%s: %s [%d] (%s) %s\n"
 		return fmt.Sprintf(st, p.Name, status, p.Cmd.Process.Pid,
-			time.Since(p.Time).String(), p.Command)
+			time.Since(p.Runtime).String(), p.Command)
 	} else {
 		st = "%s : %s: %s\n"
 		return fmt.Sprintf(st, p.Name, status, p.Command)
@@ -132,7 +132,11 @@ func (p *Process) Status() ProcStatus {
 }
 
 func (p *ProcStatus) String() string {
-	return fmt.Sprintf("%s: %s [%d] %s\n", p.Name, p.State, p.Pid, p.Runtime.String())
+	if p.State == Running || p.State == Starting {
+		return fmt.Sprintf("%s: %s [%d] %.5s\n", p.Name, p.State, p.Pid, time.Since(p.Runtime).String())
+	} else {
+		return fmt.Sprintf("%s: %s\n", p.Name, p.State)
+	}
 }
 
 func (p *Process) Start(started, processEnd chan bool) {
@@ -141,7 +145,7 @@ func (p *Process) Start(started, processEnd chan bool) {
 		logw.Error(err.Error())
 		return
 	}
-	if p.State != Starting {
+	if p.State == Starting || p.State == Running {
 		logw.Error("Process %s already started", p.Name)
 		return
 	}
@@ -151,6 +155,8 @@ func (p *Process) Start(started, processEnd chan bool) {
 		started <- false
 		return
 	}
+	p.Runtime = time.Now()
+	p.Pid = p.Cmd.Process.Pid
 	started <- true
 	p.Cmd.Wait()
 	processEnd <- true

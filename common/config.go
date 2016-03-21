@@ -14,6 +14,7 @@ const (
 	Fatal                  = "FATAL"
 	Exited                 = "EXITED"
 	Stopping               = "STOPPING"
+	Backoff                = "BACKOFF"
 	Never                  = "Never"
 	Always                 = "Always"
 	Unexpected             = "Unexpected"
@@ -47,7 +48,6 @@ type Process struct {
 	StartRetries int
 	StopSignal   syscall.Signal
 	StopTime     uint
-	Time         time.Time
 	Killed       bool
 }
 
@@ -56,7 +56,7 @@ type ProcStatus struct {
 	Name    string
 	Pid     int
 	State   string
-	Runtime time.Duration
+	Runtime time.Time
 }
 
 //Wrapper for a server method call

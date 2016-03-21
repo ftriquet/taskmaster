@@ -32,21 +32,13 @@ func StartProc(client *rpc.Client, commands []string) error {
 		return errors.New("Missing process parameter")
 	}
 	method := common.ServerMethod{MethodName: "StartProc", Params: commands}
-	call := client.Go("Handler.AddMethod", method, &ret, nil)
-	go func() {
-		resp := <-call.Done
-		if resp.Error != nil {
-			fmt.Fprintf(os.Stderr, resp.Error.Error())
-		} else {
-			stptr, ok := resp.Reply.(*[]common.ProcStatus)
-			if ok {
-				st := *stptr
-				for _, status := range st {
-					fmt.Printf("Started %s with pid %d\n", status.Name, status.Pid)
-				}
-			}
-		}
-	}()
+	err := client.Call("Handler.AddMethod", method, &ret)
+	if err != nil {
+		return err
+	}
+	for _, status := range ret {
+		fmt.Printf("Started %s with pid %d\n", status.Name, status.Pid)
+	}
 	return nil
 }
 
@@ -57,20 +49,13 @@ func StopProc(client *rpc.Client, commands []string) error {
 		return errors.New("Missing process parameter")
 	}
 	method := common.ServerMethod{MethodName: "StopProc", Params: commands}
-	call := client.Go("Handler.AddMethod", method, &ret, nil)
-	go func() {
-		resp := <-call.Done
-		if resp.Error != nil {
-			fmt.Fprintf(os.Stderr, resp.Error.Error())
-		} else {
-			st, ok := resp.Reply.([]common.ProcStatus)
-			if ok {
-				for _, status := range st {
-					fmt.Printf("Stopped %s\n", status.Name)
-				}
-			}
-		}
-	}()
+	err := client.Call("Handler.AddMethod", method, &ret)
+	if err != nil {
+		return err
+	}
+	for _, status := range ret {
+		fmt.Printf("Stopped %s\n", status.Name)
+	}
 	return nil
 }
 

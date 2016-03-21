@@ -174,7 +174,7 @@ func (h *Handler) AddMethod(action common.ServerMethod, res *[]common.ProcStatus
 func (h *Handler) init(config, log string) {
 	h.methodMap = map[string]MethodFunc{
 		"StartProc": h.StartProc,
-		//"StopProc":  h.StopProc,
+		"StopProc":  h.StopProc,
 	}
 	h.logfile = log
 	h.configFile = config
@@ -229,13 +229,13 @@ func main() {
 
 	go func() {
 		for {
-			//fmt.Println("Waiting for action")
+			fmt.Println("Waiting for action")
 			action := <-h.Actions //(Servermethod)
-			//fmt.Printf("Action received: %s\n", action.MethodName)
+			fmt.Printf("Action received: %s\n", action.MethodName)
 			err := action.Method(action.Params, action.Result)
-			//fmt.Println("DONE")
+			fmt.Println("DONE")
 			h.Response <- err
-			//fmt.Println("Response sent")
+			fmt.Println("Response sent")
 		}
 	}()
 	logw.InitSilent()
