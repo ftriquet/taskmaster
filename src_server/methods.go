@@ -21,6 +21,7 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 	started := make(chan bool)
 	for tries <= proc.StartRetries || proc.AutoRestart == common.Always {
 		tries++
+		proc.Killed = false
 		timeout := make(chan bool, 1)
 		go func() {
 			time.Sleep(time.Second * time.Duration(proc.StartTime))

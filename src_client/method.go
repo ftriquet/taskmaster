@@ -80,7 +80,7 @@ func RestartProc(client *rpc.Client, commands []string) error {
 			err = StartProc(client, []string{name})
 		}
 		if err != nil {
-			fmt.Fprintf(os.Stderr, err.Error())
+			//fmt.Fprintf(os.Stderr, err.Error())
 			return err
 		}
 	}

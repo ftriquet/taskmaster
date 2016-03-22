@@ -2,6 +2,41 @@
 	<head>
 		<title>Taskmaster</title>
 	</head>
+	<style>
+table
+{
+	border-collapse:collapse;
+	width:100%;
+	max-width:700px;
+	min-width:400px;
+	text-align:center;
+}
+
+
+				table,th, td
+				{
+					border: 1px solid gray;
+				}
+
+				th, td
+				{
+					height: 24px;
+					padding:4px;
+					vertical-align:middle;
+				}
+
+				ul
+				{
+					display:inline;
+					list-style-type:none;
+				}
+
+				.rowtitle
+				{
+					background: #9CF;
+					font-weight:bold;
+				}
+	</style>
 
 	<body>
 		<h1>Taskmaster</h1>
@@ -23,18 +58,18 @@
 			</thead>
 			<tbody>
 				{{range .}}
-					<tr>
-						<td>{{.Name}}</td>
-						<td>{{.State}}</td>
-						<td>{{.Pid}}</td>
-						<td>
-							<ul>
-								<li><a href="start/{{.Name}}">Start</a></li>
-								<li><a href="stop/{{.Name}}">Stop</a></li>
-								<li><a href="restart/{{.Name}}">Restart</a></li>
-							</ul>
-						</td>
-					</tr>
+				<tr>
+					<td>{{.Name}}</td>
+					<td>{{.State}}</td>
+					<td>{{.Pid}}</td>
+					<td>
+						<ul>
+							<li><a href="start/{{.Name}}">Start</a></li>
+							<li><a href="stop/{{.Name}}">Stop</a></li>
+							<li><a href="restart/{{.Name}}">Restart</a></li>
+						</ul>
+					</td>
+				</tr>
 				{{end}}
 			</tbody>
 		</table>
