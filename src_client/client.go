@@ -19,7 +19,7 @@ func LoadProcNames(client *rpc.Client) ([]string, error) {
 	return list, nil
 }
 
-type MethodFunc func(*rpc.Client, []string) error
+type MethodFunc func(*rpc.Client, string) error
 
 var (
 	methodMap = map[string]MethodFunc{
@@ -28,31 +28,33 @@ var (
 		"stop":     StopProc,
 		"shutdown": ShutDownServ,
 		"restart":  RestartProc,
-		"log":      GetLog,
 	}
+	procList []string
 )
 
 func main() {
 	port := flag.String("p", "4242", "Port for server connection")
 	flag.Parse()
-	comp := []string{"status", "start", "stop", "restart", "shutdown", "log"}
 
 	client, err := rpc.DialHTTP("tcp", "127.0.0.1:"+*port)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n%s\n", err)
 		os.Exit(1)
 	}
-	procList, err := LoadProcNames(client)
-	fmt.Printf("%+v\n", procList)
+	procList, err = LoadProcNames(client)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n%s\n", err)
 		os.Exit(1)
 	}
 
-	comp = append(comp, procList...)
 	line := liner.NewLiner()
 	line.SetCtrlCAborts(true)
 	line.SetCompleter(func(line string) (c []string) {
+		comp := []string{"status", "start", "stop", "restart", "shutdown", "log"}
+		if len(line) == 0 {
+			return comp
+		}
+		comp = append(comp, procList...)
 		f := strings.Fields(line)
 		for _, n := range comp {
 			if strings.HasPrefix(strings.ToLower(n), strings.ToLower(f[len(f)-1])) {
@@ -72,15 +74,7 @@ func main() {
 				line.Close()
 				break
 			}
-			f, exists := methodMap[params[0]]
-			if exists {
-				err := f(client, params[1:])
-				if err != nil {
-					fmt.Println(err.Error())
-				}
-			} else {
-				fmt.Fprintf(os.Stderr, "Unknown command: %s\n", params[0])
-			}
+			CallMethod(client, params[0], params[1:])
 		}
 	}
 }

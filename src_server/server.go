@@ -21,7 +21,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-type MethodFunc func([]string, *[]common.ProcStatus) error
+type MethodFunc func(string, *[]common.ProcStatus) error
 
 var (
 	g_procs  map[string]*common.Process
@@ -139,21 +139,14 @@ func CreateMultiProcess(progs []common.Process) []common.Process {
 	return newSlice
 }
 
-func (h *Handler) GetStatus(commands []string, result *[]common.ProcStatus) error {
+func (h *Handler) GetStatus(param string, result *[]common.ProcStatus) error {
 	res := []common.ProcStatus{}
-	if commands == nil || (len(commands) == 1 && commands[0] == "all") {
-		for _, proc := range g_procs {
-			res = append(res, proc.ProcStatus)
-		}
+	p, exists := g_procs[param]
+	if exists {
+		res = append(res, p.ProcStatus)
 	} else {
-		for _, proc := range commands {
-			p, exists := g_procs[proc]
-			if exists {
-				res = append(res, p.ProcStatus)
-			} else {
-				logw.Warning("%s: Process not found", proc)
-			}
-		}
+		logw.Warning("%s: Process not found", param)
+		return fmt.Errorf("Process not found: %s", param)
 	}
 	*result = res
 	return nil
@@ -233,7 +226,7 @@ func main() {
 			//fmt.Println("Waiting for action")
 			action := <-h.Actions //(Servermethod)
 			//fmt.Printf("Action received: %s\n", action.MethodName)
-			err := action.Method(action.Params, action.Result)
+			err := action.Method(action.Param, action.Result)
 			//fmt.Println("DONE")
 			h.Response <- err
 			//fmt.Println("Response sent")

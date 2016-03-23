@@ -8,7 +8,7 @@ import (
 	"taskmaster/common"
 )
 
-type fonction func([]string, *[]common.ProcStatus) error
+type fonction func(string, *[]common.ProcStatus) error
 
 var (
 	handlerMap = map[string]fonction{}
@@ -38,7 +38,7 @@ func actionHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var useless []common.ProcStatus
-		f([]string{split[1]}, &useless)
+		f(split[1], &useless)
 	}
 	http.Redirect(w, r, "/", http.StatusFound)
 }

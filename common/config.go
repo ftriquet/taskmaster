@@ -62,7 +62,7 @@ type ProcStatus struct {
 //Wrapper for a server method call
 type ServerMethod struct {
 	MethodName string
-	Params     []string
-	Method     func([]string, *[]ProcStatus) error
+	Param      string
+	Method     func(string, *[]ProcStatus) error
 	Result     *[]ProcStatus
 }

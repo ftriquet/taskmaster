@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"syscall"
 	"taskmaster/common"
 	"taskmaster/log"
@@ -80,17 +82,16 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 	UpdateStatus(proc, common.Fatal)
 }
 
-func (h *Handler) StartProc(params []string, res *[]common.ProcStatus) error {
+func (h *Handler) StartProc(param string, res *[]common.ProcStatus) error {
 	var statuses []common.ProcStatus
-	procName := params[0]
-	proc, exists := g_procs[procName]
+	proc, exists := g_procs[param]
 	if !exists {
-		logw.Warning("Process not found: %s", procName)
-		return errors.New(fmt.Sprintf("Process not found: %s", procName))
+		logw.Warning("Process not found: %s", param)
+		return errors.New(fmt.Sprintf("Process not found: %s", param))
 	}
 	if proc.State == common.Starting || proc.State == common.Stopping ||
 		proc.State == common.Running {
-		return errors.New(fmt.Sprintf("Process already running: %s", procName))
+		return errors.New(fmt.Sprintf("Process already running: %s", param))
 	}
 	state := make(chan error)
 	go h.handleProcess(proc, state)
@@ -116,12 +117,11 @@ func (h *Handler) StartProc(params []string, res *[]common.ProcStatus) error {
 	return nil
 }
 
-func (h *Handler) StopProc(params []string, res *[]common.ProcStatus) error {
-	procName := params[0]
-	proc, exists := g_procs[procName]
+func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
+	proc, exists := g_procs[param]
 	if !exists {
-		logw.Warning("Process not found: %s", procName)
-		return errors.New(fmt.Sprintf("Process not found: %s", procName))
+		logw.Warning("Process not found: %s", param)
+		return errors.New(fmt.Sprintf("Process not found: %s", param))
 	}
 	if proc.State != common.Starting && proc.State != common.Running {
 		return errors.New(fmt.Sprintf("Process %s is not running", proc.Name))
@@ -158,5 +158,25 @@ func (h *Handler) StopProc(params []string, res *[]common.ProcStatus) error {
 		logw.Info("Process %s was killed normally", proc.Name)
 	}
 	*res = []common.ProcStatus{proc.ProcStatus}
+	return nil
+}
+
+func (h *Handler) GetLog(nbLines int, res *[]string) error {
+	file, err := ioutil.ReadFile(h.logfile)
+	if err != nil {
+		return err
+	}
+	split := bytes.Split(file, []byte{'\n'})
+	size := len(split) - 1
+	if nbLines > 0 && nbLines < size {
+		size = nbLines
+	}
+	lines := make([]string, size)
+	j := size - 1
+	for i := len(split) - 2; j >= 0; i-- {
+		lines[j] = string(split[i])
+		j--
+	}
+	*res = lines
 	return nil
 }
