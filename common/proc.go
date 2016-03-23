@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"syscall"
 	"taskmaster/log"
 	"time"
@@ -21,7 +22,16 @@ func NewProc() Process {
 	p.Umask = DflUmask
 	p.NumProcs = DflNumProcs
 	p.ExitCodes = []int{0, 2}
+	p.Lock = &sync.Mutex{}
+	p.Die = make(chan chan bool)
 	return p
+}
+
+func (p *Process) UpdateStatus(state string) {
+	p.Lock.Lock()
+	defer p.Lock.Unlock()
+	p.State = state
+	logw.Info("Process %s entered status %s", p.Name, state)
 }
 
 func (p *Process) IsValid() bool {

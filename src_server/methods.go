@@ -11,13 +11,6 @@ import (
 	"time"
 )
 
-func UpdateStatus(p *common.Process, state string) {
-	lock.Lock()
-	p.State = state
-	lock.Unlock()
-	logw.Info("Process %s entered status %s", p.Name, state)
-}
-
 func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 	var tries = 0
 	processEnd := make(chan bool)
@@ -34,24 +27,29 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 		ok := <-started
 		//process has started normally
 		if ok {
-			UpdateStatus(proc, common.Starting)
+			proc.UpdateStatus(common.Starting)
 			state <- nil
 			//waiting for timestart
 			select {
 			case <-timeout:
 				//process has run enough time
-				UpdateStatus(proc, common.Running)
+				proc.UpdateStatus(common.Running)
 				logw.Info("%s started successfully with pid %d", proc.Name, proc.Pid)
-				<-processEnd
+				select {
+				case <-processEnd:
+				case resp := <-proc.Die:
+					resp <- true
+					<-processEnd
+				}
 				if proc.Killed {
 					//process killed by stop command
-					UpdateStatus(proc, common.Stopped)
+					proc.UpdateStatus(common.Stopped)
 					logw.Info("Stopped %s", proc.Name)
 					close(state)
 					return
 				} else {
 					//process exited normally
-					UpdateStatus(proc, common.Exited)
+					proc.UpdateStatus(common.Exited)
 					if proc.AutoRestart == common.Unexpected && proc.HasCorrectlyExit() {
 						close(state)
 						return
@@ -60,26 +58,40 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 			case <-processEnd:
 				if proc.Killed {
 					//process killed by stop command
-					UpdateStatus(proc, common.Stopped)
+					proc.UpdateStatus(common.Stopped)
 					logw.Info("Stopped %s", proc.Name)
 					close(state)
 					return
 				}
 				//process has exited  too quickly
-				UpdateStatus(proc, common.Backoff)
+				select {
+				case resp := <-proc.Die:
+					resp <- false
+					proc.UpdateStatus(common.Stopped)
+					return
+				default:
+				}
+				proc.UpdateStatus(common.Backoff)
 				logw.Warning("Process %s exited too quickly", proc.Name)
 			}
 			if proc.AutoRestart == common.Never {
 				break
 			}
 		} else {
-			UpdateStatus(proc, common.Backoff)
+			select {
+			case resp := <-proc.Die:
+				proc.UpdateStatus(common.Stopped)
+				resp <- false
+				return
+			default:
+			}
+			proc.UpdateStatus(common.Backoff)
 			state <- errors.New(fmt.Sprintf("Unable to start process %s", proc.Name))
 			logw.Warning("Unable to start process %s", proc.Name)
 		}
 	}
 	close(state)
-	UpdateStatus(proc, common.Fatal)
+	proc.UpdateStatus(common.Fatal)
 }
 
 func (h *Handler) StartProc(param string, res *[]common.ProcStatus) error {
@@ -122,6 +134,15 @@ func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
 	if !exists {
 		logw.Warning("Process not found: %s", param)
 		return errors.New(fmt.Sprintf("Process not found: %s", param))
+	}
+	if proc.State == common.Backoff {
+		response := make(chan bool)
+		proc.Die <- response
+		v := <-response
+		if !v {
+			*res = []common.ProcStatus{proc.ProcStatus}
+			return nil
+		}
 	}
 	if proc.State != common.Starting && proc.State != common.Running {
 		return errors.New(fmt.Sprintf("Process %s is not running", proc.Name))

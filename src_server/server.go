@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
-	"os/signal"
 	"sort"
 	"strconv"
 	"sync"
@@ -49,16 +48,19 @@ func (h *Handler) RemoveProcs(new map[string]*common.Process) {
 }
 
 func IsEnvEqual(old, new []string) bool {
-	if old == nil || new == nil {
-		return old == nil && new == nil
+	var oldEnv, newEnv []string
+	copy(oldEnv, old)
+	copy(newEnv, new)
+	if oldEnv == nil || newEnv == nil {
+		return oldEnv == nil && newEnv == nil
 	}
-	if len(old) != len(new) {
+	if len(oldEnv) != len(newEnv) {
 		return false
 	}
-	sort.Strings(old)
-	sort.Strings(new)
-	for i := range old {
-		if old[i] != new[i] {
+	sort.Strings(oldEnv)
+	sort.Strings(newEnv)
+	for i := range oldEnv {
+		if oldEnv[i] != newEnv[i] {
 			return false
 		}
 	}
@@ -85,6 +87,8 @@ func MustBeRestarted(old, new *common.Process) bool {
 }
 
 func UpdateProc(old, new *common.Process) {
+	old.Lock.Lock()
+	defer old.Lock.Unlock()
 	old.AutoStart = new.AutoStart
 	old.AutoRestart = new.AutoRestart
 	old.ExitCodes = new.ExitCodes
@@ -94,45 +98,48 @@ func UpdateProc(old, new *common.Process) {
 	old.StopTime = new.StopTime
 }
 
-func (h *Handler) UpdateWhatMustBeUpdated(newConf map[string]*common.Process) {
-	var toRestart []string
-	var useless []common.ProcStatus
-	for k := range newConf {
-		if proc, exists := g_procs[k]; exists {
-			if proc.State == common.Running || proc.State == common.Starting {
-				if MustBeRestarted(g_procs[k], newConf[k]) {
-					toRestart = append(toRestart, k)
-					h.StopProc(k, &useless)
-					g_procs[k] = newConf[k]
-				} else {
-					lock.Lock()
-					UpdateProc(g_procs[k], newConf[k])
-					lock.Unlock()
-				}
-			}
-		} else {
-			g_procs[k] = newConf[k]
-		}
-	}
-}
+//func (h *Handler) UpdateWhatMustBeUpdated(newConf map[string]*common.Process) {
+//	var toRestart []string
+//	var useless []common.ProcStatus
+//	for k := range newConf {
+//		if proc, exists := g_procs[k]; exists {
+//			if proc.State == common.Running || proc.State == common.Starting {
+//				if MustBeRestarted(g_procs[k], newConf[k]) {
+//					toRestart = append(toRestart, k)
+//					h.StopProc(k, &useless)
+//					g_procs[k] = newConf[k]
+//				} else {
+//					UpdateProc(g_procs[k], newConf[k])
+//				}
+//			} else if proc.State == common.Backoff {
+//				newConf[k].State = g_procs
+//			} else {
+//				newConf[k].State = g_procs[k].State
+//				g_procs[k] = newConf[k]
+//			}
+//		} else {
+//			g_procs[k] = newConf[k]
+//		}
+//	}
+//}
 
-func listenSIGHUP(filename string, h *Handler) {
-	sig := make(chan os.Signal)
-	signal.Notify(sig, syscall.SIGHUP)
-	go func() {
-		<-sig
-		newConf, err := LoadFile(filename)
-		if err != nil {
-			logw.Error("Unable to laod config file: %s", filename)
-			continue
-		}
-		h.Pause <- true
-		h.RemoveProcs(newConf)
-
-		h.Continue <- true
-		//update process avec tmp et g_trucs
-	}()
-}
+//func listenSIGHUP(filename string, h *Handler) {
+//	sig := make(chan os.Signal)
+//	signal.Notify(sig, syscall.SIGHUP)
+//	go func() {
+//		<-sig
+//		newConf, err := LoadFile(filename)
+//		if err != nil {
+//			logw.Error("Unable to laod config file: %s", filename)
+//			continue
+//		}
+//		h.Pause <- true
+//		h.RemoveProcs(newConf)
+//
+//		h.Continue <- true
+//		//update process avec tmp et g_trucs
+//	}()
+//}
 
 func (h *Handler) GetProcList(p *[]string, res *[]string) error {
 	var list []string

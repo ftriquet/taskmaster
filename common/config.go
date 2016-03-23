@@ -3,6 +3,7 @@ package common
 import (
 	"os"
 	"os/exec"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -49,6 +50,8 @@ type Process struct {
 	StopSignal   syscall.Signal
 	StopTime     uint
 	Killed       bool
+	Lock         *sync.Mutex
+	Die          chan chan bool
 }
 
 //ProcStatus s
