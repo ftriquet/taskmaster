@@ -12,6 +12,7 @@ import (
 	"net/rpc"
 	"os"
 	"os/signal"
+	"sort"
 	"strconv"
 	"sync"
 	"syscall"
@@ -34,21 +35,101 @@ type Handler struct {
 	Response            chan error
 	methodMap           map[string]MethodFunc
 	configFile, logfile string
+	Pause, Continue     chan bool
 }
 
-func listenSIGHUP(filename string) {
+func (h *Handler) RemoveProcs(new map[string]*common.Process) {
+	for k := range g_procs {
+		if _, exists := new[k]; !exists {
+			var useless []common.ProcStatus
+			h.StopProc(k, &useless)
+			delete(g_procs, k)
+		}
+	}
+}
+
+func IsEnvEqual(old, new []string) bool {
+	if old == nil || new == nil {
+		return old == nil && new == nil
+	}
+	if len(old) != len(new) {
+		return false
+	}
+	sort.Strings(old)
+	sort.Strings(new)
+	for i := range old {
+		if old[i] != new[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func MustBeRestarted(old, new *common.Process) bool {
+	switch {
+	case old.Command != new.Command:
+		return true
+	case old.Outfile != new.Outfile:
+		return true
+	case old.Errfile != new.Errfile:
+		return true
+	case old.WorkingDir != new.WorkingDir:
+		return true
+	case old.Umask != new.Umask:
+		return true
+	case !IsEnvEqual(old.Env, new.Env):
+		return true
+	default:
+		return false
+	}
+}
+
+func UpdateProc(old, new *common.Process) {
+	old.AutoStart = new.AutoStart
+	old.AutoRestart = new.AutoRestart
+	old.ExitCodes = new.ExitCodes
+	old.StartTime = new.StartTime
+	old.StartRetries = new.StartRetries
+	old.StopSignal = new.StopSignal
+	old.StopTime = new.StopTime
+}
+
+func (h *Handler) UpdateWhatMustBeUpdated(newConf map[string]*common.Process) {
+	var toRestart []string
+	var useless []common.ProcStatus
+	for k := range newConf {
+		if proc, exists := g_procs[k]; exists {
+			if proc.State == common.Running || proc.State == common.Starting {
+				if MustBeRestarted(g_procs[k], newConf[k]) {
+					toRestart = append(toRestart, k)
+					h.StopProc(k, &useless)
+					g_procs[k] = newConf[k]
+				} else {
+					lock.Lock()
+					UpdateProc(g_procs[k], newConf[k])
+					lock.Unlock()
+				}
+			}
+		} else {
+			g_procs[k] = newConf[k]
+		}
+	}
+}
+
+func listenSIGHUP(filename string, h *Handler) {
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGHUP)
-	var err error
 	go func() {
 		<-sig
-		lock.Lock()
-		tmp := g_procs
-		tmp = tmp
-		lock.Unlock()
-		if err = LoadFile(filename); err != nil {
-			logw.Error(err.Error())
+		newConf, err := LoadFile(filename)
+		if err != nil {
+			logw.Error("Unable to laod config file: %s", filename)
+			continue
 		}
+		h.Pause <- true
+		h.RemoveProcs(newConf)
+
+		h.Continue <- true
 		//update process avec tmp et g_trucs
 	}()
 }
@@ -105,19 +186,16 @@ func loadFileSlice(filename string) ([]*common.Process, error) {
 }
 
 //LoadFile reads the config file
-func LoadFile(filename string) error {
+func LoadFile(filename string) (map[string]*common.Process, error) {
 	progs, err := loadFileSlice(filename)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	m := make(map[string]*common.Process, len(progs))
 	for _, ptr := range progs {
 		m[ptr.Name] = ptr
 	}
-	lock.Lock()
-	g_procs = m
-	lock.Unlock()
-	return nil
+	return m, nil
 }
 
 func CreateMultiProcess(progs []common.Process) []common.Process {
@@ -172,6 +250,8 @@ func (h *Handler) init(config, log string) {
 	h.configFile = config
 	h.Actions = make(chan common.ServerMethod)
 	h.Response = make(chan error)
+	h.Continue = make(chan bool)
+	h.Pause = make(chan bool)
 	handlerMap["start"] = h.StartProc
 	handlerMap["stop"] = h.StopProc
 }
@@ -223,13 +303,13 @@ func main() {
 
 	go func() {
 		for {
-			//fmt.Println("Waiting for action")
-			action := <-h.Actions //(Servermethod)
-			//fmt.Printf("Action received: %s\n", action.MethodName)
-			err := action.Method(action.Param, action.Result)
-			//fmt.Println("DONE")
-			h.Response <- err
-			//fmt.Println("Response sent")
+			select {
+			case action := <-h.Actions: //(Servermethod)
+				err := action.Method(action.Param, action.Result)
+				h.Response <- err
+			case <-h.Pause:
+				<-h.Continue
+			}
 		}
 	}()
 	logw.InitSilent()
@@ -237,9 +317,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = LoadFile(h.configFile)
+	g_procs, err = LoadFile(h.configFile)
 	if err != nil {
-		panic(err)
+		fmt.Println("Unable to load config file")
+		os.Exit(1)
 	}
 
 	err = rpc.Register(h)
