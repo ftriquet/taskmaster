@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
+	"os/signal"
 	"sort"
 	"strconv"
 	"sync"
@@ -37,7 +38,7 @@ type Handler struct {
 	Pause, Continue     chan bool
 }
 
-func (h *Handler) RemoveProcs(new map[string]*common.Process) {
+func (h *Handler) removeProcs(new map[string]*common.Process) {
 	for k := range g_procs {
 		if _, exists := new[k]; !exists {
 			var useless []common.ProcStatus
@@ -47,7 +48,7 @@ func (h *Handler) RemoveProcs(new map[string]*common.Process) {
 	}
 }
 
-func IsEnvEqual(old, new []string) bool {
+func isEnvEqual(old, new []string) bool {
 	var oldEnv, newEnv []string
 	copy(oldEnv, old)
 	copy(newEnv, new)
@@ -67,7 +68,7 @@ func IsEnvEqual(old, new []string) bool {
 	return true
 }
 
-func MustBeRestarted(old, new *common.Process) bool {
+func mustBeRestarted(old, new *common.Process) bool {
 	switch {
 	case old.Command != new.Command:
 		return true
@@ -79,14 +80,14 @@ func MustBeRestarted(old, new *common.Process) bool {
 		return true
 	case old.Umask != new.Umask:
 		return true
-	case !IsEnvEqual(old.Env, new.Env):
+	case !isEnvEqual(old.Env, new.Env):
 		return true
 	default:
 		return false
 	}
 }
 
-func UpdateProc(old, new *common.Process) {
+func updateProc(old, new *common.Process) {
 	old.Lock.Lock()
 	defer old.Lock.Unlock()
 	old.AutoStart = new.AutoStart
@@ -98,48 +99,55 @@ func UpdateProc(old, new *common.Process) {
 	old.StopTime = new.StopTime
 }
 
-//func (h *Handler) UpdateWhatMustBeUpdated(newConf map[string]*common.Process) {
-//	var toRestart []string
-//	var useless []common.ProcStatus
-//	for k := range newConf {
-//		if proc, exists := g_procs[k]; exists {
-//			if proc.State == common.Running || proc.State == common.Starting {
-//				if MustBeRestarted(g_procs[k], newConf[k]) {
-//					toRestart = append(toRestart, k)
-//					h.StopProc(k, &useless)
-//					g_procs[k] = newConf[k]
-//				} else {
-//					UpdateProc(g_procs[k], newConf[k])
-//				}
-//			} else if proc.State == common.Backoff {
-//				newConf[k].State = g_procs
-//			} else {
-//				newConf[k].State = g_procs[k].State
-//				g_procs[k] = newConf[k]
-//			}
-//		} else {
-//			g_procs[k] = newConf[k]
-//		}
-//	}
-//}
+func (h *Handler) updateWhatMustBeUpdated(newConf map[string]*common.Process) {
+	var toRestart []string
+	var useless []common.ProcStatus
+	for k := range newConf {
+		if proc, exists := g_procs[k]; exists {
+			if proc.State == common.Running || proc.State == common.Starting {
+				if mustBeRestarted(g_procs[k], newConf[k]) {
+					toRestart = append(toRestart, k)
+					h.StopProc(k, &useless)
+					g_procs[k] = newConf[k]
+				} else {
+					updateProc(g_procs[k], newConf[k])
+				}
+			} else if proc.State == common.Backoff {
+				h.StopProc(k, &useless)
+				toRestart = append(toRestart, k)
+				g_procs[k] = newConf[k]
+			} else {
+				newConf[k].State = g_procs[k].State
+				g_procs[k] = newConf[k]
+			}
+		} else {
+			g_procs[k] = newConf[k]
+		}
+	}
+	for _, name := range toRestart {
+		h.StartProc(name, &useless)
+	}
+}
 
-//func listenSIGHUP(filename string, h *Handler) {
-//	sig := make(chan os.Signal)
-//	signal.Notify(sig, syscall.SIGHUP)
-//	go func() {
-//		<-sig
-//		newConf, err := LoadFile(filename)
-//		if err != nil {
-//			logw.Error("Unable to laod config file: %s", filename)
-//			continue
-//		}
-//		h.Pause <- true
-//		h.RemoveProcs(newConf)
-//
-//		h.Continue <- true
-//		//update process avec tmp et g_trucs
-//	}()
-//}
+func listenSIGHUP(filename string, h *Handler) {
+	sig := make(chan os.Signal)
+	signal.Notify(sig, syscall.SIGHUP)
+	go func() {
+		for {
+			<-sig
+			newConf, err := LoadFile(filename)
+			if err != nil {
+				logw.Error("Unable to laod config file: %s", filename)
+				continue
+			}
+			h.Pause <- true
+			h.removeProcs(newConf)
+			h.updateWhatMustBeUpdated(newConf)
+			h.Continue <- true
+		}
+	}()
+
+}
 
 func (h *Handler) GetProcList(p *[]string, res *[]string) error {
 	var list []string
@@ -329,6 +337,7 @@ func main() {
 		fmt.Println("Unable to load config file")
 		os.Exit(1)
 	}
+	listenSIGHUP(*configFile, h)
 
 	err = rpc.Register(h)
 	if err != nil {

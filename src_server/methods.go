@@ -38,6 +38,7 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 				select {
 				case <-processEnd:
 				case resp := <-proc.Die:
+					//Process will be killed normally (going from backoff)
 					resp <- true
 					<-processEnd
 				}
@@ -66,6 +67,7 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 				//process has exited  too quickly
 				select {
 				case resp := <-proc.Die:
+					//Backoff reload
 					resp <- false
 					proc.UpdateStatus(common.Stopped)
 					return
@@ -80,6 +82,7 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 		} else {
 			select {
 			case resp := <-proc.Die:
+				//Backoff reload
 				proc.UpdateStatus(common.Stopped)
 				resp <- false
 				return
@@ -110,12 +113,8 @@ func (h *Handler) StartProc(param string, res *[]common.ProcStatus) error {
 	err := <-state
 	go func() {
 		for {
-			err, open := <-state
-			if open {
-				if err != nil {
-					logw.Warning(err.Error())
-				}
-			} else {
+			_, open := <-state
+			if !open {
 				break
 			}
 		}
@@ -125,7 +124,6 @@ func (h *Handler) StartProc(param string, res *[]common.ProcStatus) error {
 		return err
 	}
 	*res = statuses
-	fmt.Printf("Send: %+v\n", statuses)
 	return nil
 }
 
