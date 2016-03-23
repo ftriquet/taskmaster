@@ -10,9 +10,10 @@
 			"WorkingDir": "/tmp",
 			"StopSignal": 2,
 			"Autostart": true,
-			"ExitCodes": [0],
+			"ExitCodes": [0, 130],
 			"AutoRestart": "Unexpected",
-			"StartRetries": 5
+			"StartRetries": 5,
+			"StopTime": 5
 		}
 	]
 }

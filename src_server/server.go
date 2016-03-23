@@ -230,13 +230,13 @@ func main() {
 
 	go func() {
 		for {
-			fmt.Println("Waiting for action")
+			//fmt.Println("Waiting for action")
 			action := <-h.Actions //(Servermethod)
-			fmt.Printf("Action received: %s\n", action.MethodName)
+			//fmt.Printf("Action received: %s\n", action.MethodName)
 			err := action.Method(action.Params, action.Result)
-			fmt.Println("DONE")
+			//fmt.Println("DONE")
 			h.Response <- err
-			fmt.Println("Response sent")
+			//fmt.Println("Response sent")
 		}
 	}()
 	logw.InitSilent()

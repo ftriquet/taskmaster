@@ -13,6 +13,7 @@ func UpdateStatus(p *common.Process, state string) {
 	lock.Lock()
 	p.State = state
 	lock.Unlock()
+	logw.Info("Process %s entered status %s", p.Name, state)
 }
 
 func (h *Handler) handleProcess(proc *common.Process, state chan error) {
@@ -37,19 +38,19 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 			select {
 			case <-timeout:
 				//process has run enough time
-				logw.Info("%s started successfully with pid %d", proc.Name, proc.Pid)
 				UpdateStatus(proc, common.Running)
+				logw.Info("%s started successfully with pid %d", proc.Name, proc.Pid)
 				<-processEnd
 				if proc.Killed {
 					//process killed by stop command
-					logw.Info("Stopped %s", proc.Name)
 					UpdateStatus(proc, common.Stopped)
+					logw.Info("Stopped %s", proc.Name)
 					close(state)
 					return
 				} else {
 					//process exited normally
 					UpdateStatus(proc, common.Exited)
-					if proc.AutoRestart == common.Always && proc.HasCorrectlyExit() {
+					if proc.AutoRestart == common.Unexpected && proc.HasCorrectlyExit() {
 						close(state)
 						return
 					}
@@ -57,14 +58,14 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 			case <-processEnd:
 				if proc.Killed {
 					//process killed by stop command
-					logw.Info("Stopped %s", proc.Name)
 					UpdateStatus(proc, common.Stopped)
+					logw.Info("Stopped %s", proc.Name)
 					close(state)
 					return
 				}
 				//process has exited  too quickly
-				logw.Warning("Process %s exited too quickly", proc.Name)
 				UpdateStatus(proc, common.Backoff)
+				logw.Warning("Process %s exited too quickly", proc.Name)
 			}
 			if proc.AutoRestart == common.Never {
 				break
@@ -125,13 +126,37 @@ func (h *Handler) StopProc(params []string, res *[]common.ProcStatus) error {
 	if proc.State != common.Starting && proc.State != common.Running {
 		return errors.New(fmt.Sprintf("Process %s is not running", proc.Name))
 	}
+	timeout := make(chan bool, 2)
+	stopped := make(chan bool, 1)
 	proc.Killed = true
-	syscall.Kill(proc.Pid, proc.StopSignal)
-	time.AfterFunc(time.Second*time.Duration(proc.StopTime), func() {
-		if proc.State != common.Stopped {
-			syscall.Kill(proc.Pid, syscall.SIGKILL)
+	syscall.Kill(proc.Cmd.Process.Pid, proc.StopSignal)
+	go func() {
+		time.Sleep(time.Duration(proc.StopTime) * time.Second)
+		timeout <- true
+		timeout <- true
+	}()
+	go func() {
+		for {
+			if proc.State == common.Stopped {
+				stopped <- true
+				return
+			}
+			select {
+			case <-timeout:
+				return
+			default:
+			}
 		}
-	})
+	}()
+	select {
+	case <-timeout:
+		if proc.State != common.Stopped {
+			syscall.Kill(proc.Cmd.Process.Pid, syscall.SIGKILL)
+			logw.Info("Process %s was killed by SIGKILL dans sa face", proc.Name)
+		}
+	case <-stopped:
+		logw.Info("Process %s was killed normally", proc.Name)
+	}
 	*res = []common.ProcStatus{proc.ProcStatus}
 	return nil
 }
