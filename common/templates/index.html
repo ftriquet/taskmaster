@@ -1,52 +1,42 @@
 <html>
 	<head>
 		<title>Taskmaster</title>
-	</head>
-	<style>
-table
+		<link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/pure-min.css">
+		<style>
+ul
 {
-	border-collapse:collapse;
-	width:100%;
-	max-width:700px;
-	min-width:400px;
 	text-align:center;
 }
-
-
-				table,th, td
-				{
-					border: 1px solid gray;
-				}
-
-				th, td
-				{
-					height: 24px;
-					padding:4px;
-					vertical-align:middle;
-				}
-
-				ul
-				{
-					display:inline;
-					list-style-type:none;
-				}
-
-				.rowtitle
-				{
-					background: #9CF;
-					font-weight:bold;
-				}
-	</style>
+					table
+					{
+						margin:0 auto;
+					}
+					td
+					{
+						text-align:center;
+					}
+					.header {
+						margin: 0;
+						color: #333;
+						text-align: center;
+						padding: 2.5em 2em 0;
+						border-bottom: 1px solid #eee;
+					}
+		</style>
+	</head>
 
 	<body>
-		<h1>Taskmaster</h1>
+		<div class="header">
+			<h1>Taskmaster</h1>
+		</div>
 
-		<ul>
-			<li><a href="/">Refresh</a></li>
-			<li><a href="/reload">Reload</a></li>
+		<!-- <div class="pure-menu pure-menu-horizontal"> -->
+		<ul class="pure-menu-list">
+			<li class=""><a class="pure-menu-link" href="/">Refresh</a></li>
+			<li class=""><a class="pure-menu-link" href="/reload">Reload</a></li>
 		</ul>
-
-		<table border="1">
+		<!-- </div> -->
+		<table class="pure-table pure-table-bordered">
 			<thead>
 				<tr>
 					<td>Name</td>
@@ -62,11 +52,13 @@ table
 					<td>{{.State}}</td>
 					<td>{{.Pid}}</td>
 					<td>
-						<ul>
-							<li><a href="StartProc/{{.Name}}">Start</a></li>
-							<li><a href="StopProc/{{.Name}}">Stop</a></li>
-							<li><a href="RestartProc/{{.Name}}">Restart</a></li>
-						</ul>
+						<div class="pure-menu pure-menu-horizontal">
+							<ul class="pure-menu-list">
+								<li class="pure-menu-item pure-menu-selected"><a class="pure-menu-link" href="StartProc/{{.Name}}">Start</a></li>
+								<li class="pure-menu-item pure-menu-selected"><a class="pure-menu-link" href="StopProc/{{.Name}}">Stop</a></li>
+								<li class="pure-menu-item pure-menu-selected"><a class="pure-menu-link" href="RestartProc/{{.Name}}">Restart</a></li>
+							</ul>
+						</div>
 					</td>
 				</tr>
 				{{end}}
