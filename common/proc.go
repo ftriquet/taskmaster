@@ -21,6 +21,7 @@ func NewProc() Process {
 	p.StopTime = DflStopTime
 	p.Umask = DflUmask
 	p.NumProcs = DflNumProcs
+	p.StopSignal = syscall.SIGINT
 	p.ExitCodes = []int{0, 2}
 	p.Lock = &sync.Mutex{}
 	p.Die = make(chan chan bool)

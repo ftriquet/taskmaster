@@ -1,17 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"taskmaster/common"
-)
-
-type fonction func(string, *[]common.ProcStatus) error
-
-var (
-	handlerMap = map[string]fonction{}
 )
 
 func indexHandler(w http.ResponseWriter, req *http.Request) {
@@ -27,18 +22,20 @@ func indexHandler(w http.ResponseWriter, req *http.Request) {
 	t.Execute(w, g_procs)
 }
 
-func actionHandler(w http.ResponseWriter, r *http.Request) {
+func actionHandler(w http.ResponseWriter, r *http.Request, h *Handler) {
+	var method common.ServerMethod
+	var res []common.ProcStatus
 	split := strings.Split(r.URL.Path, "/")
 	if split[0] == "" {
 		split = split[1:]
 	}
 	if len(split) == 2 {
-		f, exists := handlerMap[split[0]]
-		if !exists {
-			return
-		}
-		var useless []common.ProcStatus
-		f(split[1], &useless)
+		fmt.Printf("HTTP REQUEST: %s %s\n", split[0], split[1])
+		method.MethodName = split[0]
+		method.Param = split[1]
+		h.AddMethod(method, &res)
+	} else if len(split) == 1 && split[0] == "reload" {
+		h.ReloadConfig("", &res)
 	}
 	http.Redirect(w, r, "/", http.StatusFound)
 }
@@ -54,5 +51,5 @@ func handleRequest(w http.ResponseWriter, r *http.Request, h *Handler) {
 		indexHandler(w, r)
 		return
 	}
-	actionHandler(w, r)
+	actionHandler(w, r, h)
 }

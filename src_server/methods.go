@@ -152,18 +152,12 @@ func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
 	go func() {
 		time.Sleep(time.Duration(proc.StopTime) * time.Second)
 		timeout <- true
-		timeout <- true
 	}()
 	go func() {
 		for {
 			if proc.State == common.Stopped {
 				stopped <- true
 				return
-			}
-			select {
-			case <-timeout:
-				return
-			default:
 			}
 		}
 	}()
@@ -198,4 +192,24 @@ func (h *Handler) GetLog(nbLines int, res *[]string) error {
 	}
 	*res = lines
 	return nil
+}
+
+func (h *Handler) ReloadConfig(param string, res *[]common.ProcStatus) error {
+
+	newConf, err := LoadFile(h.configFile)
+	if err != nil {
+		logw.Error("Unable to laod config file: %s", h.configFile)
+		return err
+	}
+	h.removeProcs(newConf)
+	h.updateWhatMustBeUpdated(newConf)
+	return nil
+}
+
+func (h *Handler) RestartProc(param string, res *[]common.ProcStatus) error {
+	err := h.StopProc(param, res)
+	if err == nil {
+		err = h.StartProc(param, res)
+	}
+	return err
 }

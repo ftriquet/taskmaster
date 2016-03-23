@@ -252,14 +252,14 @@ func (h *Handler) AddMethod(action common.ServerMethod, res *[]common.ProcStatus
 	}
 	action.Result = res
 	h.Actions <- action
-	fmt.Println("Action sent, waiting for response")
 	return <-h.Response
 }
 
 func (h *Handler) init(config, log string) {
 	h.methodMap = map[string]MethodFunc{
-		"StartProc": h.StartProc,
-		"StopProc":  h.StopProc,
+		"StartProc":   h.StartProc,
+		"StopProc":    h.StopProc,
+		"RestartProc": h.RestartProc,
 	}
 	h.logfile = log
 	h.configFile = config
@@ -267,8 +267,6 @@ func (h *Handler) init(config, log string) {
 	h.Response = make(chan error)
 	h.Continue = make(chan bool)
 	h.Pause = make(chan bool)
-	handlerMap["start"] = h.StartProc
-	handlerMap["stop"] = h.StopProc
 }
 
 func generateHash() {
