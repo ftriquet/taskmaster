@@ -93,6 +93,14 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 			logw.Warning("Unable to start process %s", proc.Name)
 		}
 	}
+	select {
+	case resp := <-proc.Die:
+		//Backoff reload
+		proc.UpdateStatus(common.Stopped)
+		resp <- false
+		return
+	default:
+	}
 	close(state)
 	proc.UpdateStatus(common.Fatal)
 }
@@ -145,7 +153,7 @@ func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
 	if proc.State != common.Starting && proc.State != common.Running {
 		return errors.New(fmt.Sprintf("Process %s is not running", proc.Name))
 	}
-	timeout := make(chan bool, 2)
+	timeout := make(chan bool, 1)
 	stopped := make(chan bool, 1)
 	proc.Killed = true
 	syscall.Kill(proc.Cmd.Process.Pid, proc.StopSignal)
@@ -161,6 +169,7 @@ func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
 			}
 		}
 	}()
+	fmt.Println("Waiting for the dead of process")
 	select {
 	case <-timeout:
 		if proc.State != common.Stopped {
@@ -171,6 +180,7 @@ func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
 		logw.Info("Process %s was killed normally", proc.Name)
 	}
 	*res = []common.ProcStatus{proc.ProcStatus}
+	fmt.Println("Returning for sStopProc")
 	return nil
 }
 
@@ -201,8 +211,12 @@ func (h *Handler) ReloadConfig(param string, res *[]common.ProcStatus) error {
 		logw.Error("Unable to laod config file: %s", h.configFile)
 		return err
 	}
+	h.Pause <- true
 	h.removeProcs(newConf)
 	h.updateWhatMustBeUpdated(newConf)
+	h.handleAutoStart()
+	h.Continue <- true
+	*res = []common.ProcStatus{}
 	return nil
 }
 
@@ -217,4 +231,13 @@ func (h *Handler) RestartProc(param string, res *[]common.ProcStatus) error {
 func (h *Handler) Shutdown(param string, res *[]common.ProcStatus) error {
 	*res = []common.ProcStatus{{State: "Server has shutddown"}}
 	return nil
+}
+
+func (h *Handler) handleAutoStart() {
+	for k, v := range g_procs {
+		var useless []common.ProcStatus
+		if v.AutoStart {
+			h.StartProc(k, &useless)
+		}
+	}
 }

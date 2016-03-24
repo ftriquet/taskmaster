@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -30,7 +29,6 @@ func actionHandler(w http.ResponseWriter, r *http.Request, h *Handler) {
 		split = split[1:]
 	}
 	if len(split) == 2 {
-		fmt.Printf("HTTP REQUEST: %s %s\n", split[0], split[1])
 		method.MethodName = split[0]
 		method.Param = split[1]
 		h.AddMethod(method, &res)

@@ -17,7 +17,7 @@
 		},
 		{
 			"Name": "Fail",
-			"Command": "swag",
+			"Command": "/bin/cat /dev/random",
 			"NumProcs": 1
 		}
 	]

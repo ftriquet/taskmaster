@@ -66,7 +66,6 @@ func CallMethod(client *rpc.Client, command string, args []string) error {
 		for _, proc := range argList {
 			err := f(client, proc)
 			if err != nil {
-				fmt.Printf("Yolo error : %+v\n", command)
 				fmt.Println(err.Error())
 			}
 		}

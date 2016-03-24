@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -135,15 +136,17 @@ func listenSIGHUP(filename string, h *Handler) {
 	go func() {
 		for {
 			<-sig
-			newConf, err := LoadFile(filename)
-			if err != nil {
-				logw.Error("Unable to laod config file: %s", filename)
-				continue
-			}
-			h.Pause <- true
-			h.removeProcs(newConf)
-			h.updateWhatMustBeUpdated(newConf)
-			h.Continue <- true
+			//newConf, err := LoadFile(filename)
+			//if err != nil {
+			//	logw.Error("Unable to laod config file: %s", filename)
+			//	continue
+			//}
+			//h.Pause <- true
+			//h.removeProcs(newConf)
+			//h.updateWhatMustBeUpdated(newConf)
+			//h.handleAutoStart()
+			//h.Continue <- true
+			h.ReloadConfig("lol", &[]common.ProcStatus{})
 		}
 	}()
 
@@ -255,7 +258,9 @@ func (h *Handler) AddMethod(action common.ServerMethod, res *[]common.ProcStatus
 	if action.MethodName == "Shutdown" {
 		defer close(h.Actions)
 	}
-	return <-h.Response
+	ret := <-h.Response
+	fmt.Printf("Returning form AddMethod %s\n", action.MethodName)
+	return ret
 }
 
 func (h *Handler) init(config, log string) {
@@ -329,7 +334,6 @@ func main() {
 		os.Exit(1)
 	}
 	listenSIGHUP(*configFile, h)
-
 	err = rpc.Register(h)
 	if err != nil {
 		panic(err)
@@ -339,7 +343,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	go func() {
 		for {
 			select {
@@ -356,10 +359,7 @@ func main() {
 			}
 		}
 	}()
-
+	h.handleAutoStart()
 	http.HandleFunc("/", generateRenderer(h))
-	err = http.Serve(listener, nil)
-	if err != nil {
-		panic(err)
-	}
+	log.Fatal(http.Serve(listener, nil))
 }

@@ -1,0 +1,29 @@
+{
+	"ProgList":
+	[
+		{
+			"Name": "LOL",
+			"Command": "/usr/bin/norminette /nfs/2015/f/ftriquet/projets/42sh",
+			"NumProcs": 1,
+			"Outfile": "/tmp/norminette.out",
+			"Errfile": "/tmp/norminette.err",
+			"WorkingDir": "/tmp",
+			"StopSignal": 2,
+			"Autostart": true,
+			"ExitCodes": [0, 130],
+			"AutoRestart": "Unexpected",
+			"StartRetries": 5,
+			"StopTime": 5
+		},
+		{
+			"Name": "Fail",
+			"Command": "/bin/ls -lR",
+			"NumProcs": 1,
+			"WorkingDir": "/usr",
+			"Outfile": "/tmp/ls.out",
+			"Errfile": "/tmp/ls.err",
+			"StartTime": 4,
+			"StartRetries": 2
+		}
+	]
+}
