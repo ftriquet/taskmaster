@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/rpc"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/peterh/liner"
 )
@@ -64,7 +66,16 @@ func main() {
 		}
 		return
 	})
-
+	sig := make(chan os.Signal)
+	signal.Notify(sig, syscall.SIGHUP)
+	go func() {
+		for {
+			for _, cmd := range []string{"status", "start", "stop"} {
+				<-sig
+				CallMethod(client, cmd, []string{})
+			}
+		}
+	}()
 	for {
 		l, _ := line.Prompt("taskmaster> ")
 		if l != "" {

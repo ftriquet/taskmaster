@@ -102,29 +102,47 @@ func updateProc(old, new *common.Process) {
 	old.StopTime = new.StopTime
 }
 
+func replaceProcess(k string, newConf map[string]*common.Process) {
+	lock.Lock()
+	defer lock.Unlock()
+	g_procs[k] = newConf[k]
+}
+
+func getProc(k string) (res *common.Process, exists bool) {
+	lock.RLock()
+	defer lock.RUnlock()
+	res, exists = g_procs[k]
+	return
+}
+
 func (h *Handler) updateWhatMustBeUpdated(newConf map[string]*common.Process) {
 	var toRestart []string
 	var useless []common.ProcStatus
 	for k := range newConf {
-		if proc, exists := g_procs[k]; exists {
-			if proc.State == common.Running || proc.State == common.Starting {
+		if proc, exists := getProc(k); exists {
+			procState := proc.GetProcStatus()
+			if procState.State == common.Running || procState.State == common.Starting {
 				if mustBeRestarted(g_procs[k], newConf[k]) {
 					toRestart = append(toRestart, k)
 					h.StopProc(k, &useless)
-					g_procs[k] = newConf[k]
+					//g_procs[k] = newConf[k]
+					replaceProcess(k, newConf)
 				} else {
 					updateProc(g_procs[k], newConf[k])
 				}
-			} else if proc.State == common.Backoff {
+			} else if procState.State == common.Backoff {
 				toRestart = append(toRestart, k)
 				h.StopProc(k, &useless)
-				g_procs[k] = newConf[k]
+				//g_procs[k] = newConf[k]
+				replaceProcess(k, newConf)
 			} else {
-				newConf[k].State = g_procs[k].GetProcStatus().State
-				g_procs[k] = newConf[k]
+				newConf[k].State = procState.State
+				//g_procs[k] = newConf[k]
+				replaceProcess(k, newConf)
 			}
 		} else {
-			g_procs[k] = newConf[k]
+			//g_procs[k] = newConf[k]
+			replaceProcess(k, newConf)
 		}
 	}
 	for _, name := range toRestart {

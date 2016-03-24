@@ -34,7 +34,7 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 			case <-timeout:
 				//process has run enough time
 				proc.SetStatus(common.Running)
-				logw.Info("%s started successfully with pid %d", proc.Name, proc.Pid)
+				logw.Info("%s started successfully with pid %d", proc.Name, proc.GetPid())
 				select {
 				case <-processEnd:
 				case resp := <-proc.Die:

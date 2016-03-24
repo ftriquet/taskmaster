@@ -37,7 +37,7 @@ func (p *Process) GetProcStatus() ProcStatus {
 func (p *Process) SetPid(pid int) {
 	p.Lock.Lock()
 	defer p.Lock.Unlock()
-	p.Pid = pid
+	p.ProcStatus.Pid = pid
 }
 
 func (p *Process) GetPid() int {
