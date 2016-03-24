@@ -159,27 +159,25 @@ func listenSIGHUP(filename string, h *Handler) {
 
 }
 
-func (h *Handler) GetProcList(p *[]string, res *[]string) error {
-	var list []string
-
-	for k, _ := range g_procs {
-		list = append(list, k)
-	}
-	*res = list
-	return nil
-}
+//func (h *Handler) GetProcList(p *[]string, res *[]string) error {
+//	var list []string
+//
+//	for k, _ := range g_procs {
+//		list = append(list, k)
+//	}
+//	*res = list
+//	return nil
+//}
 
 func loadFileSlice(filename string) ([]*common.Process, error) {
 	configFile, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-
 	wrapper := struct {
 		Password string
 		ProgList []common.Process
 	}{}
-
 	var programs []common.Process
 	var resPtr []*common.Process
 	err = json.Unmarshal(configFile, &wrapper)
@@ -206,7 +204,7 @@ func loadFileSlice(filename string) ([]*common.Process, error) {
 			resPtr = append(resPtr, &programs[i])
 		} else {
 			logw.Warning("Process has an empty name or empty command")
-			fmt.Fprintf(os.Stderr, "Warning : process has an empty name or empty command")
+			fmt.Fprintf(os.Stderr, "Warning : process has an empty name or empty command\n")
 		}
 	}
 	return resPtr, nil
@@ -244,17 +242,27 @@ func CreateMultiProcess(progs []common.Process) []common.Process {
 	return newSlice
 }
 
-func (h *Handler) GetStatus(param string, result *[]common.ProcStatus) error {
-	res := []common.ProcStatus{}
-	lock.RLock()
-	p, exists := g_procs[param]
-	lock.RUnlock()
-	if exists {
-		res = append(res, p.GetProcStatus())
-	} else {
-		logw.Warning("%s: Process not found", param)
-		return fmt.Errorf("Process not found: %s", param)
+func sliceContains(s []string, name string) bool {
+	for _, n := range s {
+		if n == name {
+			return true
+		}
 	}
+	return false
+}
+
+func (h *Handler) GetStatus(params []string, result *[]common.ProcStatus) error {
+	res := []common.ProcStatus{}
+	var procList []string
+	lock.RLock()
+	for k, proc := range g_procs {
+		procList = append(procList, k)
+		if params[0] == "" || sliceContains(params, k) {
+			res = append(res, proc.GetProcStatus())
+		}
+	}
+	lock.RUnlock()
+	res = append(res, common.ProcStatus{Name: strings.Join(procList, " ")})
 	*result = res
 	return nil
 }
@@ -270,7 +278,6 @@ func (h *Handler) AddMethod(action common.ServerMethod, res *[]common.ProcStatus
 		defer close(h.Actions)
 	}
 	ret := <-h.Response
-	fmt.Printf("Returning form AddMethod %s\n", action.MethodName)
 	return ret
 }
 
@@ -343,7 +350,6 @@ func main() {
 	if err != nil {
 		log.Fatal("Unable to load config file")
 	}
-	listenSIGHUP(*configFile, h)
 	err = rpc.Register(h)
 	if err != nil {
 		log.Fatal(err)
@@ -370,6 +376,7 @@ func main() {
 		}
 	}()
 	h.handleAutoStart()
+	listenSIGHUP(*configFile, h)
 	http.HandleFunc("/", generateRenderer(h))
 	log.Fatal(http.Serve(listener, nil))
 }

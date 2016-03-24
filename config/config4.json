@@ -2,7 +2,7 @@
 	"ProgList":
 	[
 		{
-			"Name": "LOL",
+			"Name": "tOt",
 			"Command": "/usr/bin/norminette /nfs/2015/f/ftriquet/projets/42sh",
 			"NumProcs": 1,
 			"Outfile": "/tmp/norminette.out",

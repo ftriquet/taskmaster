@@ -5,18 +5,20 @@ import (
 	"net/rpc"
 	"os"
 	"strconv"
+	"strings"
 	"taskmaster/common"
 )
 
-func GetStatus(client *rpc.Client, commands string) error {
+func GetStatus(client *rpc.Client, args []string) error {
 	var ret []common.ProcStatus
-	tmp, err := LoadProcNames(client)
-	if err == nil {
-		procList = tmp
-	}
-	err = client.Call("Handler.GetStatus", commands, &ret)
+	err := client.Call("Handler.GetStatus", args, &ret)
 	if err != nil {
 		return err
+	}
+	if len(ret) > 0 {
+		procList = strings.Fields(ret[len(ret)-1].Name)
+		fmt.Printf("%v\n", procList)
+		ret = ret[:len(ret)-1]
 	}
 	for _, p := range ret {
 		fmt.Printf(p.String())
@@ -52,6 +54,12 @@ func CallMethod(client *rpc.Client, command string, args []string) error {
 	var argList []string
 	if command == "log" {
 		return GetLog(client, args)
+	}
+	if command == "status" {
+		if len(args) == 0 || args[0] == "all" {
+			return GetStatus(client, []string{""})
+		}
+		return GetStatus(client, args)
 	}
 	if len(args) == 0 || args[0] == "all" {
 		argList = procList

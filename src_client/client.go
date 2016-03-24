@@ -27,7 +27,6 @@ type MethodFunc func(*rpc.Client, string) error
 
 var (
 	methodMap = map[string]MethodFunc{
-		"status":   GetStatus,
 		"start":    StartProc,
 		"stop":     StopProc,
 		"shutdown": ShutDownServ,
@@ -35,6 +34,10 @@ var (
 	}
 	procList []string
 )
+
+func getProcList() []string {
+	return procList
+}
 
 func main() {
 	port := flag.String("p", "4242", "Port for server connection")
@@ -45,11 +48,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n%s\n", err)
 		os.Exit(1)
 	}
-	procList, err = LoadProcNames(client)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n%s\n", err)
 		os.Exit(1)
 	}
+	CallMethod(client, "status", []string{""})
 
 	line := liner.NewLiner()
 	line.SetCtrlCAborts(true)
@@ -58,9 +61,9 @@ func main() {
 		if len(line) == 0 {
 			return comp
 		}
-		comp = append(comp, procList...)
-		f := strings.Fields(line)
+		comp = append(comp, getProcList()...)
 		for _, n := range comp {
+			f := strings.Fields(line)
 			if strings.HasPrefix(strings.ToLower(n), strings.ToLower(f[len(f)-1])) {
 				f[len(f)-1] = n
 				c = append(c, strings.Join(f, " "))
