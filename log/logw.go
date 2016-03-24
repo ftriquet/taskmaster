@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sync"
 )
 
 var (
@@ -13,6 +14,7 @@ var (
 	g_alert   *log.Logger
 	g_err     *log.Logger
 	g_rlog    *Rotlog
+	g_rotlock *sync.Mutex
 	g_silent  bool
 )
 
@@ -23,6 +25,7 @@ func Init() {
 	g_err = log.New(os.Stderr, "ERROR   ", log.Ldate|log.Ltime)
 	g_rlog = nil
 	g_silent = false
+	g_rotlock = &sync.Mutex{}
 }
 
 // for tests, or just if you like silence, emptyness, darkness, oblivion
@@ -32,6 +35,7 @@ func InitSilent() {
 	g_alert = log.New(ioutil.Discard, "ALERT   ", log.Ldate|log.Ltime)
 	g_err = log.New(ioutil.Discard, "ERROR   ", log.Ldate|log.Ltime)
 	g_silent = true
+	g_rotlock = &sync.Mutex{}
 }
 
 func InitRotatingLog(name string, rotate_every int, nbfiles int) error {
@@ -45,6 +49,8 @@ func InitRotatingLog(name string, rotate_every int, nbfiles int) error {
 }
 
 func writeAndSwap(log *log.Logger, msg string, stderr bool) {
+	g_rotlock.Lock()
+	defer g_rotlock.Unlock()
 	log.SetOutput(g_rlog)
 	log.Printf(msg)
 	if g_silent {

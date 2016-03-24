@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
+	"log"
 	"net/rpc"
 	"os"
 	"os/signal"
@@ -66,19 +68,23 @@ func main() {
 		}
 		return
 	})
+	if f, err := os.Open("./.history"); err == nil {
+		line.ReadHistory(f)
+		defer f.Close()
+	}
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGHUP)
-	go func() {
-		for {
-			for _, cmd := range []string{"status", "start", "stop"} {
-				<-sig
-				CallMethod(client, cmd, []string{})
-			}
-		}
-	}()
 	for {
-		l, _ := line.Prompt("taskmaster> ")
+		l, err := line.Prompt("taskmaster> ")
+		if err == io.EOF {
+			fmt.Println("Bye")
+			break
+		} else if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading line\n")
+			break
+		}
 		if l != "" {
+			line.AppendHistory(l)
 			params := strings.Fields(l)
 			if params[0] == "quit" {
 				client.Close()
@@ -87,5 +93,11 @@ func main() {
 			}
 			CallMethod(client, params[0], params[1:])
 		}
+	}
+	if f, err := os.Create("./.history"); err != nil {
+		log.Print("Error writing history file: ", err)
+	} else {
+		line.WriteHistory(f)
+		f.Close()
 	}
 }

@@ -17,7 +17,6 @@
 		},
 		{
 			"Name": "Fail",
-			"Command": "/bin/ls -lR",
 			"NumProcs": 1,
 			"WorkingDir": "/usr",
 			"Outfile": "/tmp/ls.out",
