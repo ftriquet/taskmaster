@@ -18,7 +18,6 @@ import (
 	"syscall"
 	"taskmaster/common"
 	"taskmaster/log"
-	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -114,8 +113,8 @@ func (h *Handler) updateWhatMustBeUpdated(newConf map[string]*common.Process) {
 					updateProc(g_procs[k], newConf[k])
 				}
 			} else if proc.State == common.Backoff {
-				h.StopProc(k, &useless)
 				toRestart = append(toRestart, k)
+				h.StopProc(k, &useless)
 				g_procs[k] = newConf[k]
 			} else {
 				newConf[k].State = g_procs[k].State
@@ -253,6 +252,9 @@ func (h *Handler) AddMethod(action common.ServerMethod, res *[]common.ProcStatus
 	}
 	action.Result = res
 	h.Actions <- action
+	if action.MethodName == "Shutdown" {
+		defer close(h.Actions)
+	}
 	return <-h.Response
 }
 
@@ -341,11 +343,11 @@ func main() {
 	go func() {
 		for {
 			select {
-			case action := <-h.Actions: //(Servermethod)
-				err := action.Method(action.Param, action.Result)
-				h.Response <- err
-				if action.MethodName == "Shutdown" {
-					time.Sleep(100 * time.Millisecond)
+			case action, open := <-h.Actions: //(Servermethod)
+				if open {
+					err := action.Method(action.Param, action.Result)
+					h.Response <- err
+				} else {
 					listener.Close()
 					os.Exit(0)
 				}
