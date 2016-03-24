@@ -58,11 +58,15 @@ func CallMethod(client *rpc.Client, command string, args []string) error {
 	} else {
 		argList = args
 	}
+	if command == "shutdown" {
+		argList = []string{""}
+	}
 	f, exists := methodMap[command]
 	if exists {
 		for _, proc := range argList {
 			err := f(client, proc)
 			if err != nil {
+				fmt.Printf("Yolo error : %+v\n", command)
 				fmt.Println(err.Error())
 			}
 		}
@@ -112,13 +116,23 @@ func RestartProc(client *rpc.Client, procName string) error {
 }
 
 func ShutDownServ(client *rpc.Client, commands string) error {
-	var ret string
+	var ret []common.ProcStatus
+	//Stop all process
+	tmp, err := LoadProcNames(client)
+	if err == nil {
+		for _, name := range tmp {
+			StopProc(client, name)
+		}
+	}
+	//Shutdown server
 	method := common.ServerMethod{MethodName: "Shutdown", Param: commands}
-	err := client.Call("Handler.AddMethod", method, &ret)
+	err = client.Call("Handler.AddMethod", method, &ret)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, err.Error())
 		return err
 	}
-	fmt.Println(ret)
+	if ret != nil && len(ret) == 1 {
+		fmt.Println(ret[0].State)
+	}
 	return nil
+
 }

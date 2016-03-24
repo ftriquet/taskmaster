@@ -213,3 +213,8 @@ func (h *Handler) RestartProc(param string, res *[]common.ProcStatus) error {
 	}
 	return err
 }
+
+func (h *Handler) Shutdown(param string, res *[]common.ProcStatus) error {
+	*res = []common.ProcStatus{{State: "Server has shutddown"}}
+	return nil
+}

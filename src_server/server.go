@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"taskmaster/common"
 	"taskmaster/log"
+	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -260,6 +261,7 @@ func (h *Handler) init(config, log string) {
 		"StartProc":   h.StartProc,
 		"StopProc":    h.StopProc,
 		"RestartProc": h.RestartProc,
+		"Shutdown":    h.Shutdown,
 	}
 	h.logfile = log
 	h.configFile = config
@@ -314,17 +316,6 @@ func main() {
 	h := new(Handler)
 	h.init(*configFile, *logfile)
 
-	go func() {
-		for {
-			select {
-			case action := <-h.Actions: //(Servermethod)
-				err := action.Method(action.Param, action.Result)
-				h.Response <- err
-			case <-h.Pause:
-				<-h.Continue
-			}
-		}
-	}()
 	logw.InitSilent()
 	err := logw.InitRotatingLog(h.logfile, 65535, 8)
 	if err != nil {
@@ -346,6 +337,24 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	go func() {
+		for {
+			select {
+			case action := <-h.Actions: //(Servermethod)
+				err := action.Method(action.Param, action.Result)
+				h.Response <- err
+				if action.MethodName == "Shutdown" {
+					time.Sleep(100 * time.Millisecond)
+					listener.Close()
+					os.Exit(0)
+				}
+			case <-h.Pause:
+				<-h.Continue
+			}
+		}
+	}()
+
 	http.HandleFunc("/", generateRenderer(h))
 	err = http.Serve(listener, nil)
 	if err != nil {
