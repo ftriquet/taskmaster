@@ -263,7 +263,7 @@ func (p *Process) SetStatus(state string) {
 func (p *Process) IsValid() bool {
 	p.Lock.RLock()
 	defer p.Lock.RUnlock()
-	return p.Name != "" && p.Command != ""
+	return p.Name != "" && p.Command != "" && !strings.ContainsAny(p.Name, " \t\n\v\f\r\u0085\u00A0")
 }
 
 func (p *Process) InitStderr() error {

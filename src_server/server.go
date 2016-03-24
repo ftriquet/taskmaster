@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"taskmaster/common"
@@ -125,7 +126,6 @@ func (h *Handler) updateWhatMustBeUpdated(newConf map[string]*common.Process) {
 				if mustBeRestarted(g_procs[k], newConf[k]) {
 					toRestart = append(toRestart, k)
 					h.StopProc(k, &useless)
-					//g_procs[k] = newConf[k]
 					replaceProcess(k, newConf)
 				} else {
 					updateProc(g_procs[k], newConf[k])
@@ -133,15 +133,12 @@ func (h *Handler) updateWhatMustBeUpdated(newConf map[string]*common.Process) {
 			} else if procState.State == common.Backoff {
 				toRestart = append(toRestart, k)
 				h.StopProc(k, &useless)
-				//g_procs[k] = newConf[k]
 				replaceProcess(k, newConf)
 			} else {
 				newConf[k].State = procState.State
-				//g_procs[k] = newConf[k]
 				replaceProcess(k, newConf)
 			}
 		} else {
-			//g_procs[k] = newConf[k]
 			replaceProcess(k, newConf)
 		}
 	}
@@ -156,16 +153,6 @@ func listenSIGHUP(filename string, h *Handler) {
 	go func() {
 		for {
 			<-sig
-			//newConf, err := LoadFile(filename)
-			//if err != nil {
-			//	logw.Error("Unable to laod config file: %s", filename)
-			//	continue
-			//}
-			//h.Pause <- true
-			//h.removeProcs(newConf)
-			//h.updateWhatMustBeUpdated(newConf)
-			//h.handleAutoStart()
-			//h.Continue <- true
 			h.ReloadConfig("lol", &[]common.ProcStatus{})
 		}
 	}()
@@ -214,10 +201,12 @@ func loadFileSlice(filename string) ([]*common.Process, error) {
 	programs = wrapper.ProgList
 	programs = CreateMultiProcess(programs)
 	for i := range programs {
+		programs[i].Name = strings.TrimSpace(programs[i].Name)
 		if programs[i].IsValid() {
 			resPtr = append(resPtr, &programs[i])
 		} else {
-			//logw.Warning("Process %d has an empty name or empty command")
+			logw.Warning("Process has an empty name or empty command")
+			fmt.Fprintf(os.Stderr, "Warning : process has an empty name or empty command")
 		}
 	}
 	return resPtr, nil
@@ -348,22 +337,21 @@ func main() {
 	logw.InitSilent()
 	err := logw.InitRotatingLog(h.logfile, 65535, 8)
 	if err != nil {
-		panic(err)
+		log.Fatal("Failed to open log file")
 	}
 	g_procs, err = LoadFile(h.configFile)
 	if err != nil {
-		fmt.Println("Unable to load config file")
-		os.Exit(1)
+		log.Fatal("Unable to load config file")
 	}
 	listenSIGHUP(*configFile, h)
 	err = rpc.Register(h)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	rpc.HandleHTTP()
 	listener, err := net.Listen("tcp", ":4242")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	go func() {
 		for {
