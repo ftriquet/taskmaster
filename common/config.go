@@ -50,7 +50,7 @@ type Process struct {
 	StopSignal   syscall.Signal
 	StopTime     uint
 	Killed       bool
-	Lock         *sync.Mutex
+	Lock         *sync.RWMutex
 	Die          chan chan bool
 }
 

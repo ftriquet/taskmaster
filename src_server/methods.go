@@ -15,25 +15,25 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 	var tries = 0
 	processEnd := make(chan bool)
 	started := make(chan bool)
-	for tries <= proc.StartRetries || proc.AutoRestart == common.Always {
+	for tries <= proc.GetStartRetries() || proc.GetAutoRestart() == common.Always {
 		tries++
-		proc.Killed = false
+		proc.SetKilled(false)
 		timeout := make(chan bool, 1)
 		go func() {
-			time.Sleep(time.Second * time.Duration(proc.StartTime))
+			time.Sleep(time.Second * time.Duration(proc.GetStartTime()))
 			timeout <- true
 		}()
 		go proc.Start(started, processEnd)
 		ok := <-started
 		//process has started normally
 		if ok {
-			proc.UpdateStatus(common.Starting)
+			proc.SetStatus(common.Starting)
 			state <- nil
 			//waiting for timestart
 			select {
 			case <-timeout:
 				//process has run enough time
-				proc.UpdateStatus(common.Running)
+				proc.SetStatus(common.Running)
 				logw.Info("%s started successfully with pid %d", proc.Name, proc.Pid)
 				select {
 				case <-processEnd:
@@ -42,24 +42,24 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 					resp <- true
 					<-processEnd
 				}
-				if proc.Killed {
+				if proc.GetKilled() {
 					//process killed by stop command
-					proc.UpdateStatus(common.Stopped)
+					proc.SetStatus(common.Stopped)
 					logw.Info("Stopped %s", proc.Name)
 					close(state)
 					return
 				} else {
 					//process exited normally
-					proc.UpdateStatus(common.Exited)
-					if proc.AutoRestart == common.Unexpected && proc.HasCorrectlyExit() {
+					proc.SetStatus(common.Exited)
+					if proc.GetAutoRestart() == common.Unexpected && proc.HasCorrectlyExit() {
 						close(state)
 						return
 					}
 				}
 			case <-processEnd:
-				if proc.Killed {
+				if proc.GetKilled() {
 					//process killed by stop command
-					proc.UpdateStatus(common.Stopped)
+					proc.SetStatus(common.Stopped)
 					logw.Info("Stopped %s", proc.Name)
 					close(state)
 					return
@@ -69,26 +69,26 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 				case resp := <-proc.Die:
 					//Backoff reload
 					resp <- false
-					proc.UpdateStatus(common.Stopped)
+					proc.SetStatus(common.Stopped)
 					return
 				default:
 				}
-				proc.UpdateStatus(common.Backoff)
+				proc.SetStatus(common.Backoff)
 				logw.Warning("Process %s exited too quickly", proc.Name)
 			}
-			if proc.AutoRestart == common.Never {
+			if proc.GetAutoRestart() == common.Never {
 				break
 			}
 		} else {
 			select {
 			case resp := <-proc.Die:
 				//Backoff reload
-				proc.UpdateStatus(common.Stopped)
+				proc.SetStatus(common.Stopped)
 				resp <- false
 				return
 			default:
 			}
-			proc.UpdateStatus(common.Backoff)
+			proc.SetStatus(common.Backoff)
 			state <- errors.New(fmt.Sprintf("Unable to start process %s", proc.Name))
 			logw.Warning("Unable to start process %s", proc.Name)
 		}
@@ -96,13 +96,13 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 	select {
 	case resp := <-proc.Die:
 		//Backoff reload
-		proc.UpdateStatus(common.Stopped)
+		proc.SetStatus(common.Stopped)
 		resp <- false
 		return
 	default:
 	}
 	close(state)
-	proc.UpdateStatus(common.Fatal)
+	proc.SetStatus(common.Fatal)
 }
 
 func (h *Handler) StartProc(param string, res *[]common.ProcStatus) error {
@@ -112,8 +112,9 @@ func (h *Handler) StartProc(param string, res *[]common.ProcStatus) error {
 		logw.Warning("Process not found: %s", param)
 		return errors.New(fmt.Sprintf("Process not found: %s", param))
 	}
-	if proc.State == common.Starting || proc.State == common.Stopping ||
-		proc.State == common.Running {
+	status := proc.GetProcStatus()
+	if status.State == common.Starting || status.State == common.Stopping ||
+		status.State == common.Running {
 		return errors.New(fmt.Sprintf("Process already running: %s", param))
 	}
 	state := make(chan error)
@@ -127,7 +128,7 @@ func (h *Handler) StartProc(param string, res *[]common.ProcStatus) error {
 			}
 		}
 	}()
-	statuses = []common.ProcStatus{proc.ProcStatus}
+	statuses = []common.ProcStatus{proc.GetProcStatus()}
 	if err != nil {
 		return err
 	}
@@ -141,12 +142,13 @@ func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
 		logw.Warning("Process not found: %s", param)
 		return errors.New(fmt.Sprintf("Process not found: %s", param))
 	}
-	if proc.State == common.Backoff {
+	status := proc.GetProcStatus()
+	if status.State == common.Backoff {
 		response := make(chan bool)
 		proc.Die <- response
 		v := <-response
 		if !v {
-			*res = []common.ProcStatus{proc.ProcStatus}
+			*res = []common.ProcStatus{status}
 			return nil
 		}
 	}
@@ -155,7 +157,7 @@ func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
 	}
 	timeout := make(chan bool, 1)
 	stopped := make(chan bool, 1)
-	proc.Killed = true
+	proc.SetKilled(true)
 	syscall.Kill(proc.Cmd.Process.Pid, proc.StopSignal)
 	go func() {
 		time.Sleep(time.Duration(proc.StopTime) * time.Second)
@@ -163,16 +165,15 @@ func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
 	}()
 	go func() {
 		for {
-			if proc.State == common.Stopped {
+			if proc.GetProcStatus().State == common.Stopped {
 				stopped <- true
 				return
 			}
 		}
 	}()
-	fmt.Println("Waiting for the dead of process")
 	select {
 	case <-timeout:
-		if proc.State != common.Stopped {
+		if proc.GetProcStatus().State != common.Stopped {
 			syscall.Kill(proc.Cmd.Process.Pid, syscall.SIGKILL)
 			logw.Info("Process %s was killed by SIGKILL dans sa face", proc.Name)
 		}
@@ -180,7 +181,6 @@ func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
 		logw.Info("Process %s was killed normally", proc.Name)
 	}
 	*res = []common.ProcStatus{proc.ProcStatus}
-	fmt.Println("Returning for sStopProc")
 	return nil
 }
 

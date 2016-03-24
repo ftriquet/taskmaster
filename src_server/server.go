@@ -40,6 +40,7 @@ type Handler struct {
 }
 
 func (h *Handler) removeProcs(new map[string]*common.Process) {
+	lock.Lock()
 	for k := range g_procs {
 		if _, exists := new[k]; !exists {
 			var useless []common.ProcStatus
@@ -47,6 +48,7 @@ func (h *Handler) removeProcs(new map[string]*common.Process) {
 			delete(g_procs, k)
 		}
 	}
+	lock.Unlock()
 }
 
 func isEnvEqual(old, new []string) bool {
@@ -118,7 +120,7 @@ func (h *Handler) updateWhatMustBeUpdated(newConf map[string]*common.Process) {
 				h.StopProc(k, &useless)
 				g_procs[k] = newConf[k]
 			} else {
-				newConf[k].State = g_procs[k].State
+				newConf[k].State = g_procs[k].GetProcStatus().State
 				g_procs[k] = newConf[k]
 			}
 		} else {
@@ -237,9 +239,11 @@ func CreateMultiProcess(progs []common.Process) []common.Process {
 
 func (h *Handler) GetStatus(param string, result *[]common.ProcStatus) error {
 	res := []common.ProcStatus{}
+	lock.RLock()
 	p, exists := g_procs[param]
+	lock.RUnlock()
 	if exists {
-		res = append(res, p.ProcStatus)
+		res = append(res, p.GetProcStatus())
 	} else {
 		logw.Warning("%s: Process not found", param)
 		return fmt.Errorf("Process not found: %s", param)
