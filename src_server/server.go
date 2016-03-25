@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -288,14 +289,24 @@ func (h *Handler) init(config, log string) {
 }
 
 func generateHash() {
-	fmt.Println("Password:")
+	fmt.Printf("Password: ")
 	bytepass, err := terminal.ReadPassword(int(syscall.Stdin))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to generate hash\n")
+		fmt.Fprintf(os.Stderr, "\nUnable to generate hash\n")
+		return
+	}
+	fmt.Printf("\nConfirm password: ")
+	bytepass2, err := terminal.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "\nUnable to generate hash\n")
+		return
+	}
+	if !bytes.Equal(bytepass, bytepass2) {
+		fmt.Fprintf(os.Stderr, "\nPassword incorrect\n")
 		return
 	}
 	hash := sha256.New()
-	fmt.Printf("%x\n", hash.Sum(bytepass))
+	fmt.Printf("\n%x\n", hash.Sum(bytepass))
 }
 
 func (h *Handler) HasPassword(i bool, ret *bool) error {

@@ -341,7 +341,7 @@ func (p *Process) GetExitCode() int {
 	exitCode := p.Cmd.ProcessState.Sys().(syscall.WaitStatus)
 	if exitCode > 128 {
 		exitCode = (exitCode >> 8) & 255
-	} else {
+	} else if exitCode > 0 {
 		exitCode += 128
 	}
 	return int(exitCode)
@@ -374,7 +374,7 @@ func (p *Process) Start(started, processEnd chan bool) {
 	p.SetRuntime(time.Now())
 	p.SetPid(p.Cmd.Process.Pid)
 	started <- true
-	p.Cmd.Wait()
+	err = p.Cmd.Wait()
 	p.SetPid(0)
 	processEnd <- true
 }

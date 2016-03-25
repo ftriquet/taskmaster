@@ -10,6 +10,11 @@ import (
 	"taskmaster/common"
 )
 
+type BasicAuth struct {
+	Login    string
+	Password string
+}
+
 func indexHandler(w http.ResponseWriter, req *http.Request) {
 	content, err := ioutil.ReadFile("./common/templates/index.html")
 	if err != nil {
@@ -60,11 +65,6 @@ func handleRequest(w http.ResponseWriter, r *http.Request, h *Handler) {
 		return
 	}
 	actionHandler(w, r, h)
-}
-
-type BasicAuth struct {
-	Login    string
-	Password string
 }
 
 func NewBasicAuth() *BasicAuth {
