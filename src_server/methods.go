@@ -102,6 +102,7 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 	default:
 	}
 	close(state)
+	proc.CloseLogs()
 	proc.SetStatus(common.Fatal)
 }
 
@@ -180,6 +181,7 @@ func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
 	case <-stopped:
 		logw.Info("Process %s was killed normally", proc.Name)
 	}
+	proc.CloseLogs()
 	*res = []common.ProcStatus{proc.ProcStatus}
 	return nil
 }

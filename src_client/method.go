@@ -66,7 +66,7 @@ func CallMethod(client *rpc.Client, command string, args []string) error {
 	} else {
 		argList = args
 	}
-	if command == "shutdown" {
+	if command == "shutdown" || command == "reload" {
 		argList = []string{""}
 	}
 	f, exists := methodMap[command]
@@ -117,6 +117,15 @@ func RestartProc(client *rpc.Client, procName string) error {
 	}
 	if err != nil {
 		//fmt.Fprintf(os.Stderr, err.Error())
+		return err
+	}
+	return nil
+}
+
+func ReloadConfig(client *rpc.Client, procName string) error {
+	var ret []common.ProcStatus
+	err := client.Call("Handler.ReloadConfig", "", &ret)
+	if err != nil {
 		return err
 	}
 	return nil

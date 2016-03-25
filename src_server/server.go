@@ -159,16 +159,6 @@ func listenSIGHUP(filename string, h *Handler) {
 
 }
 
-//func (h *Handler) GetProcList(p *[]string, res *[]string) error {
-//	var list []string
-//
-//	for k, _ := range g_procs {
-//		list = append(list, k)
-//	}
-//	*res = list
-//	return nil
-//}
-
 func loadFileSlice(filename string) ([]*common.Process, error) {
 	configFile, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -286,6 +276,7 @@ func (h *Handler) init(config, log string) {
 		"StartProc":   h.StartProc,
 		"StopProc":    h.StopProc,
 		"RestartProc": h.RestartProc,
+		"Reload":      h.ReloadConfig,
 		"Shutdown":    h.Shutdown,
 	}
 	h.logfile = log

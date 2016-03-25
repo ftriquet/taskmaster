@@ -31,6 +31,7 @@ var (
 		"stop":     StopProc,
 		"shutdown": ShutDownServ,
 		"restart":  RestartProc,
+		"reload":   ReloadConfig,
 	}
 	procList []string
 )
