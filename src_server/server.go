@@ -339,7 +339,7 @@ func main() {
 	configFile := flag.String("c", "./config.json", "Config-file name")
 	logfile := flag.String("l", "./taskmaster_logs", "Taskmaster's log file")
 	genPassword := flag.Bool("p", false, "Generate password hash")
-	httpFlag := flag.Bool("-http", true, "Active http server")
+	httpFlag := flag.Bool("b", true, "Active http server")
 	flag.Parse()
 
 	if *genPassword {
@@ -386,7 +386,10 @@ func main() {
 	h.handleAutoStart()
 	listenSIGHUP(*configFile, h)
 	if *httpFlag {
-		a := NewBasicAuth()
+		var a *BasicAuth
+		if password != "" {
+			a = NewBasicAuth()
+		}
 		http.HandleFunc("/", generateRenderer(a, h))
 	}
 	log.Fatal(http.Serve(listener, nil))

@@ -43,8 +43,14 @@ func actionHandler(w http.ResponseWriter, r *http.Request, h *Handler) {
 }
 
 func generateRenderer(a *BasicAuth, h *Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		a.BasicAuthHandler(w, r, h)
+	if a != nil {
+		return func(w http.ResponseWriter, r *http.Request) {
+			a.BasicAuthHandler(w, r, h)
+		}
+	} else {
+		return func(w http.ResponseWriter, r *http.Request) {
+			handleRequest(w, r, h)
+		}
 	}
 }
 
