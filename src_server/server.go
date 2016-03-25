@@ -298,6 +298,23 @@ func generateHash() {
 	fmt.Printf("%x\n", hash.Sum(bytepass))
 }
 
+func (h *Handler) HasPassword(i bool, ret *bool) error {
+	*ret = (password != "")
+	return nil
+}
+
+func (h *Handler) Authenticate(pass string, ret *bool) error {
+	hash := sha256.New()
+	hashedPass := fmt.Sprintf("%x", hash.Sum([]byte(pass)))
+	fmt.Printf("%s\n%s\n", hashedPass, password)
+	if hashedPass == password {
+		*ret = true
+	} else {
+		*ret = false
+	}
+	return nil
+}
+
 func checkPassword(testing bool) bool {
 	fmt.Println("Password:")
 	var bytepass []byte

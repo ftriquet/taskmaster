@@ -11,6 +11,8 @@ import (
 	"strings"
 	"syscall"
 
+	"golang.org/x/crypto/ssh/terminal"
+
 	"github.com/peterh/liner"
 )
 
@@ -40,21 +42,49 @@ func getProcList() []string {
 	return procList
 }
 
+func checkAuth(client *rpc.Client) {
+	var needPass bool
+	err := client.Call("Handler.HasPassword", true, &needPass)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n%s\n", err)
+		client.Close()
+		os.Exit(1)
+	}
+	if !needPass {
+		return
+	}
+
+	fmt.Printf("Password: ")
+	bytePass, err := terminal.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to read password\n")
+		client.Close()
+		os.Exit(1)
+	}
+	var ok bool
+	err = client.Call("Handler.Authenticate", string(bytePass), &ok)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n%s\n", err)
+		client.Close()
+		os.Exit(1)
+	}
+	if !ok {
+		fmt.Fprintf(os.Stderr, "Authentication failed\n")
+		client.Close()
+		os.Exit(1)
+	}
+}
+
 func main() {
 	port := flag.String("p", "4242", "Port for server connection")
 	flag.Parse()
-
 	client, err := rpc.DialHTTP("tcp", "127.0.0.1:"+*port)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n%s\n", err)
 		os.Exit(1)
 	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to the server\n%s\n", err)
-		os.Exit(1)
-	}
+	checkAuth(client)
 	CallMethod(client, "status", []string{""})
-
 	line := liner.NewLiner()
 	line.SetCtrlCAborts(true)
 	line.SetCompleter(func(line string) (c []string) {
