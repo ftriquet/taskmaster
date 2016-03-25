@@ -306,7 +306,6 @@ func (h *Handler) HasPassword(i bool, ret *bool) error {
 func (h *Handler) Authenticate(pass string, ret *bool) error {
 	hash := sha256.New()
 	hashedPass := fmt.Sprintf("%x", hash.Sum([]byte(pass)))
-	fmt.Printf("%s\n%s\n", hashedPass, password)
 	if hashedPass == password {
 		*ret = true
 	} else {
@@ -340,6 +339,7 @@ func main() {
 	configFile := flag.String("c", "./config.json", "Config-file name")
 	logfile := flag.String("l", "./taskmaster_logs", "Taskmaster's log file")
 	genPassword := flag.Bool("p", false, "Generate password hash")
+	httpFlag := flag.Bool("-http", true, "Active http server")
 	flag.Parse()
 
 	if *genPassword {
@@ -385,6 +385,9 @@ func main() {
 	}()
 	h.handleAutoStart()
 	listenSIGHUP(*configFile, h)
-	http.HandleFunc("/", generateRenderer(h))
+	if *httpFlag {
+		a := NewBasicAuth()
+		http.HandleFunc("/", generateRenderer(a, h))
+	}
 	log.Fatal(http.Serve(listener, nil))
 }

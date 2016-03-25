@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -18,7 +20,9 @@ func indexHandler(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		return
 	}
+	lock.RLock()
 	t.Execute(w, g_procs)
+	lock.RUnlock()
 }
 
 func actionHandler(w http.ResponseWriter, r *http.Request, h *Handler) {
@@ -38,9 +42,9 @@ func actionHandler(w http.ResponseWriter, r *http.Request, h *Handler) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func generateRenderer(h *Handler) http.HandlerFunc {
+func generateRenderer(a *BasicAuth, h *Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		handleRequest(w, r, h)
+		a.BasicAuthHandler(w, r, h)
 	}
 }
 
@@ -50,4 +54,36 @@ func handleRequest(w http.ResponseWriter, r *http.Request, h *Handler) {
 		return
 	}
 	actionHandler(w, r, h)
+}
+
+type BasicAuth struct {
+	Login    string
+	Password string
+}
+
+func NewBasicAuth() *BasicAuth {
+	return &BasicAuth{Login: "taskmaster", Password: password}
+}
+
+func (a *BasicAuth) Authenticate(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("WWW-Authenticate", `Basic realm="taskmaster"`)
+	http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+}
+
+func (a *BasicAuth) ValidAuth(r *http.Request) bool {
+	username, passUser, ok := r.BasicAuth()
+	if !ok {
+		return false
+	}
+	hash := sha256.New()
+	hashedPass := fmt.Sprintf("%x", hash.Sum([]byte(passUser)))
+	return username == a.Login && password == hashedPass
+}
+
+func (a *BasicAuth) BasicAuthHandler(w http.ResponseWriter, r *http.Request, h *Handler) {
+	if !a.ValidAuth(r) {
+		a.Authenticate(w, r)
+	} else {
+		handleRequest(w, r, h)
+	}
 }

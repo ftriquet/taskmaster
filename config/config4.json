@@ -17,12 +17,18 @@
 		},
 		{
 			"Name": "Fail",
+			"Command": "/bin/ls",
 			"NumProcs": 1,
 			"WorkingDir": "/usr",
 			"Outfile": "/tmp/ls.out",
 			"Errfile": "/tmp/ls.err",
 			"StartTime": 4,
-			"StartRetries": 2
+			"StartRetries": 2,
+			"Log": {
+				"FailAlert": 5,
+				"StatusAlert": "EXITED",
+				"Address": "ftriquet01gmail.com"
+			}
 		}
 	]
 }

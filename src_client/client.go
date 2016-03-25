@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/rpc"
 	"os"
-	"os/signal"
 	"strings"
 	"syscall"
 
@@ -75,6 +74,43 @@ func checkAuth(client *rpc.Client) {
 	}
 }
 
+func getSuffixFrom(word string, list []string) []string {
+	var res []string
+
+	for _, cmd := range list {
+		if strings.HasPrefix(strings.ToLower(cmd), strings.ToLower(word)) {
+			res = append(res, cmd)
+		}
+	}
+	return res
+}
+
+func autoComplete(line string) (c []string) {
+	comp := []string{"status", "start", "stop", "restart", "shutdown", "log"}
+	if len(line) == 0 {
+		return comp
+	}
+	f := strings.Fields(line)
+	if len(f) == 0 {
+		return comp
+	} else if len(f) == 1 && line[len(line)-1] != ' ' {
+		return getSuffixFrom(line, comp)
+	}
+	var completion []string
+	if line[len(line)-1] == ' ' {
+		completion = getProcList()
+		line += "  a"
+	} else {
+		completion = getSuffixFrom(f[len(f)-1], getProcList())
+	}
+	for _, proc := range completion {
+		l := strings.Fields(line)
+		l[len(l)-1] = proc
+		c = append(c, strings.Join(l, " "))
+	}
+	return
+}
+
 func main() {
 	port := flag.String("p", "4242", "Port for server connection")
 	flag.Parse()
@@ -86,28 +122,12 @@ func main() {
 	checkAuth(client)
 	CallMethod(client, "status", []string{""})
 	line := liner.NewLiner()
-	line.SetCtrlCAborts(true)
-	line.SetCompleter(func(line string) (c []string) {
-		comp := []string{"status", "start", "stop", "restart", "shutdown", "log"}
-		if len(line) == 0 {
-			return comp
-		}
-		comp = append(comp, getProcList()...)
-		for _, n := range comp {
-			f := strings.Fields(line)
-			if strings.HasPrefix(strings.ToLower(n), strings.ToLower(f[len(f)-1])) {
-				f[len(f)-1] = n
-				c = append(c, strings.Join(f, " "))
-			}
-		}
-		return
-	})
+	line.SetCtrlCAborts(false)
+	line.SetCompleter(autoComplete)
 	if f, err := os.Open("./.history"); err == nil {
 		line.ReadHistory(f)
 		defer f.Close()
 	}
-	sig := make(chan os.Signal)
-	signal.Notify(sig, syscall.SIGHUP)
 	for {
 		l, err := line.Prompt("taskmaster> ")
 		if err == io.EOF {

@@ -17,7 +17,6 @@ func GetStatus(client *rpc.Client, args []string) error {
 	}
 	if len(ret) > 0 {
 		procList = strings.Fields(ret[len(ret)-1].Name)
-		fmt.Printf("%v\n", procList)
 		ret = ret[:len(ret)-1]
 	}
 	for _, p := range ret {
@@ -150,5 +149,4 @@ func ShutDownServ(client *rpc.Client, commands string) error {
 		fmt.Println(ret[0].State)
 	}
 	return nil
-
 }
