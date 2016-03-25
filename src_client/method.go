@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"taskmaster/common"
+	"time"
 )
 
 func GetStatus(client *rpc.Client, args []string) error {
@@ -130,6 +131,23 @@ func ReloadConfig(client *rpc.Client, procName string) error {
 	return nil
 }
 
+func lol(stop chan bool) {
+	for {
+		select {
+		case <-stop:
+			fmt.Println()
+			return
+		default:
+			fmt.Printf("\rServer is shutting down .  ")
+			time.Sleep(400 * time.Millisecond)
+			fmt.Printf("\rServer is shutting down .. ")
+			time.Sleep(400 * time.Millisecond)
+			fmt.Printf("\rServer is shutting down ...")
+			time.Sleep(400 * time.Millisecond)
+		}
+	}
+}
+
 func ShutDownServ(client *rpc.Client, commands string) error {
 	var ret []common.ProcStatus
 	//Stop all process
@@ -140,8 +158,11 @@ func ShutDownServ(client *rpc.Client, commands string) error {
 		}
 	}
 	//Shutdown server
+	stop := make(chan bool)
 	method := common.ServerMethod{MethodName: "Shutdown", Param: commands}
+	go lol(stop)
 	err = client.Call("Handler.AddMethod", method, &ret)
+	stop <- true
 	if err != nil {
 		return err
 	}

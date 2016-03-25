@@ -182,7 +182,7 @@ func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
 		logw.Info("Process %s was killed normally", proc.Name)
 	}
 	proc.CloseLogs()
-	*res = []common.ProcStatus{proc.ProcStatus}
+	*res = []common.ProcStatus{proc.GetProcStatus()}
 	return nil
 }
 
@@ -232,6 +232,14 @@ func (h *Handler) RestartProc(param string, res *[]common.ProcStatus) error {
 
 func (h *Handler) Shutdown(param string, res *[]common.ProcStatus) error {
 	*res = []common.ProcStatus{{State: "Server has shutddown"}}
+	lock.Lock()
+	for k, proc := range g_procs {
+		s := proc.GetProcStatus().State
+		if s == common.Running || s == common.Starting || s == common.Backoff {
+			var u []common.ProcStatus
+			h.StopProc(k, &u)
+		}
+	}
 	return nil
 }
 
