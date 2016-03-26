@@ -138,12 +138,14 @@ func lol(stop chan bool) {
 			fmt.Println()
 			return
 		default:
-			fmt.Printf("\rServer is shutting down .  ")
-			time.Sleep(400 * time.Millisecond)
-			fmt.Printf("\rServer is shutting down .. ")
-			time.Sleep(400 * time.Millisecond)
-			fmt.Printf("\rServer is shutting down ...")
-			time.Sleep(400 * time.Millisecond)
+			fmt.Printf("\r| Server is shutting down |")
+			time.Sleep(300 * time.Millisecond)
+			fmt.Printf("\r\\ Server is shutting down /")
+			time.Sleep(300 * time.Millisecond)
+			fmt.Printf("\r- Server is shutting down -")
+			time.Sleep(300 * time.Millisecond)
+			fmt.Printf("\r/ Server is shutting down \\")
+			time.Sleep(300 * time.Millisecond)
 		}
 	}
 }

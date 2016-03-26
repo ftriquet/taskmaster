@@ -30,6 +30,7 @@ type MethodFunc func(string, *[]common.ProcStatus) error
 var (
 	g_procs  map[string]*common.Process
 	lock     = new(sync.RWMutex)
+	passlock = new(sync.RWMutex)
 	password string
 )
 
@@ -55,11 +56,10 @@ func (h *Handler) removeProcs(new map[string]*common.Process) {
 
 func isEnvEqual(old, new []string) bool {
 	var oldEnv, newEnv []string
+	oldEnv = make([]string, len(old))
+	newEnv = make([]string, len(new))
 	copy(oldEnv, old)
 	copy(newEnv, new)
-	if oldEnv == nil || newEnv == nil {
-		return oldEnv == nil && newEnv == nil
-	}
 	if len(oldEnv) != len(newEnv) {
 		return false
 	}
@@ -176,7 +176,7 @@ func loadFileSlice(filename string) ([]*common.Process, error) {
 		return nil, err
 	}
 	programs = wrapper.ProgList
-	password = wrapper.Password
+	setPassword(wrapper.Password)
 	size := len(programs)
 	programs = make([]common.Process, size)
 	for i := 0; i < size; i++ {
@@ -191,11 +191,11 @@ func loadFileSlice(filename string) ([]*common.Process, error) {
 	programs = CreateMultiProcess(programs)
 	for i := range programs {
 		programs[i].Name = strings.TrimSpace(programs[i].Name)
-		if programs[i].IsValid() {
+		if err := programs[i].IsValid(); err == nil {
 			resPtr = append(resPtr, &programs[i])
 		} else {
-			logw.Warning("Process has an empty name or empty command")
-			fmt.Fprintf(os.Stderr, "Warning : process has an empty name or empty command\n")
+			logw.Warning(err.Error())
+			fmt.Fprintf(os.Stderr, err.Error())
 		}
 	}
 	return resPtr, nil
@@ -346,6 +346,17 @@ func checkPassword(testing bool) bool {
 	return false
 }
 
+func setPassword(pass string) {
+	passlock.Lock()
+	password = pass
+	passlock.Unlock()
+}
+func getPassword() string {
+	passlock.RLock()
+	defer passlock.RUnlock()
+	return password
+}
+
 func main() {
 	configFile := flag.String("c", "./config.json", "Config-file name")
 	logfile := flag.String("l", "./taskmaster_logs", "Taskmaster's log file")
@@ -398,7 +409,7 @@ func main() {
 	listenSIGHUP(*configFile, h)
 	if *httpFlag {
 		var a *BasicAuth
-		if password != "" {
+		if getPassword() != "" {
 			a = NewBasicAuth()
 		}
 		http.HandleFunc("/", generateRenderer(a, h))

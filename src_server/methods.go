@@ -12,7 +12,7 @@ import (
 )
 
 func (h *Handler) handleProcess(proc *common.Process, state chan error) {
-	var tries = 0
+	var tries = uint(0)
 	processEnd := make(chan bool)
 	started := make(chan bool)
 	for tries <= proc.GetStartRetries() || proc.GetAutoRestart() == common.Always {
@@ -153,7 +153,8 @@ func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
 			return nil
 		}
 	}
-	if proc.State != common.Starting && proc.State != common.Running {
+	statu := proc.GetProcStatus().State
+	if statu != common.Starting && statu != common.Running {
 		return errors.New(fmt.Sprintf("Process %s is not running", proc.Name))
 	}
 	timeout := make(chan bool, 1)
@@ -161,7 +162,7 @@ func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
 	proc.SetKilled(true)
 	syscall.Kill(proc.Cmd.Process.Pid, proc.StopSignal)
 	go func() {
-		time.Sleep(time.Duration(proc.StopTime) * time.Second)
+		time.Sleep(time.Duration(proc.GetStopTime()) * time.Second)
 		timeout <- true
 	}()
 	go func() {

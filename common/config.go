@@ -46,7 +46,7 @@ type Process struct {
 	AutoRestart  string
 	ExitCodes    []int
 	StartTime    uint
-	StartRetries int
+	StartRetries uint
 	StopSignal   syscall.Signal
 	StopTime     uint
 	Killed       bool

@@ -212,12 +212,12 @@ func (p *Process) SetStartTime(param uint) {
 	defer p.Lock.Unlock()
 	p.StartTime = param
 }
-func (p *Process) GetStartRetries() int {
+func (p *Process) GetStartRetries() uint {
 	p.Lock.RLock()
 	defer p.Lock.RUnlock()
 	return p.StartRetries
 }
-func (p *Process) SetStartRetries(param int) {
+func (p *Process) SetStartRetries(param uint) {
 	p.Lock.Lock()
 	defer p.Lock.Unlock()
 	p.StartRetries = param
@@ -260,10 +260,21 @@ func (p *Process) SetStatus(state string) {
 	logw.Info("Process %s entered status %s", p.Name, state)
 }
 
-func (p *Process) IsValid() bool {
+func (p *Process) IsValid() error {
+	var err error = nil
 	p.Lock.RLock()
 	defer p.Lock.RUnlock()
-	return p.Name != "" && p.Command != "" && !strings.ContainsAny(p.Name, " \t\n\v\f\r\u0085\u00A0")
+	switch {
+	case p.Name == "":
+		err = fmt.Errorf("A process has an empty name, the process will be ignored, please reload your config file\n")
+	case p.Command == "":
+		err = fmt.Errorf("A process has an empty command, the process will be ignored, please reload your config file\n")
+	case strings.ContainsAny(p.Name, " \t\n\v\f\r\u0085\u00A0"):
+		err = fmt.Errorf("A process has whitespaces in its name, the process will be ignored, please reload your config file\n")
+	case p.AutoRestart != "Always" && p.AutoRestart != "Never" && p.AutoRestart != "Unexpected":
+		err = fmt.Errorf("A process has an invalid AutoRestart value, the process will be ignored, please reload your config file\n")
+	}
+	return err
 }
 
 func (p *Process) InitStderr() error {
@@ -356,25 +367,29 @@ func (p *ProcStatus) String() string {
 }
 
 func (p *Process) Start(started, processEnd chan bool) {
+	oldMask := syscall.Umask(int(p.GetUmask()))
 	err := p.Init()
 	if err != nil {
 		logw.Error(err.Error())
+		started <- false
 		return
 	}
 	if p.State == Starting || p.State == Running {
 		logw.Error("Process %s already started", p.Name)
-		return
-	}
-	syscall.Umask(int(p.GetUmask()))
-	err = p.Cmd.Start()
-	if err != nil {
 		started <- false
 		return
 	}
+	err = p.Cmd.Start()
+	if err != nil {
+		fmt.Println(err)
+		started <- false
+		return
+	}
+	syscall.Umask(oldMask)
 	p.SetRuntime(time.Now())
 	p.SetPid(p.Cmd.Process.Pid)
 	started <- true
 	err = p.Cmd.Wait()
-	p.SetPid(0)
 	processEnd <- true
+	p.SetPid(0)
 }

@@ -86,7 +86,7 @@ func getSuffixFrom(word string, list []string) []string {
 }
 
 func autoComplete(line string) (c []string) {
-	comp := []string{"status", "start", "stop", "restart", "shutdown", "log"}
+	comp := []string{"status", "reload", "start", "quit", "stop", "restart", "shutdown", "log"}
 	if len(line) == 0 {
 		return comp
 	}
