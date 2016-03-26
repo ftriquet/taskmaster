@@ -10,9 +10,8 @@ import (
 	"strings"
 	"syscall"
 
-	"golang.org/x/crypto/ssh/terminal"
-
 	"github.com/peterh/liner"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 func LoadProcNames(client *rpc.Client) ([]string, error) {
@@ -145,7 +144,10 @@ func main() {
 				line.Close()
 				break
 			}
-			CallMethod(client, params[0], params[1:])
+			err = CallMethod(client, params[0], params[1:])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+			}
 		}
 	}
 	if f, err := os.Create("./.history"); err != nil {

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/rpc"
-	"os"
 	"strconv"
 	"strings"
 	"taskmaster/common"
@@ -40,7 +39,6 @@ func GetLog(client *rpc.Client, params []string) error {
 	}
 	err = client.Call("Handler.GetLog", param, &ret)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 		return err
 	} else {
 		for _, log := range ret {
@@ -78,7 +76,7 @@ func CallMethod(client *rpc.Client, command string, args []string) error {
 			}
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command)
+		return fmt.Errorf("Unknown command: %s", command)
 	}
 	return nil
 }
