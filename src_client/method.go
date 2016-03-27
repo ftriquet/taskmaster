@@ -126,6 +126,7 @@ func ReloadConfig(client *rpc.Client, procName string) error {
 	if err != nil {
 		return err
 	}
+	checkAuth(client)
 	return nil
 }
 
