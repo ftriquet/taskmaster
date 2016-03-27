@@ -358,13 +358,13 @@ func getPassword() string {
 }
 
 func main() {
+	port := flag.Uint("p", 4242, "Server port")
 	configFile := flag.String("c", "./config.json", "Config-file name")
 	logfile := flag.String("l", "./taskmaster_logs", "Taskmaster's log file")
 	logsize := flag.Uint("s", 65535, "Max size of a log file")
 	lognb := flag.Uint("n", 8, "Max number of log files")
-	genPassword := flag.Bool("p", false, "Generate password hash")
+	genPassword := flag.Bool("h", false, "Generate password hash")
 	httpFlag := flag.Bool("b", true, "Active http server")
-
 	flag.Parse()
 
 	if *genPassword {
@@ -388,7 +388,7 @@ func main() {
 		log.Fatal(err)
 	}
 	rpc.HandleHTTP()
-	listener, err := net.Listen("tcp", ":4242")
+	listener, err := net.Listen("tcp", ":"+strconv.FormatUint(uint64(*port), 10))
 	if err != nil {
 		log.Fatal(err)
 	}
