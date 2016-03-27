@@ -7,6 +7,7 @@
 			"NumProcs": 1,
 			"Outfile": "/tmp/norminette.out",
 			"Errfile": "/tmp/norminette.err",
+			"StartTime": 1,
 			"WorkingDir": "/tmp",
 			"StopSignal": 2,
 			"Autostart": true,
@@ -16,14 +17,24 @@
 			"StopTime": 5
 		},
 		{
-			"Name": "Fail",
+			"Name": "GrosLs",
 			"Command": "/bin/ls -lR",
-			"NumProcs": 1,
+			"NumProcs": 3,
+			"ExitCodes": [0, 1],
 			"WorkingDir": "/usr",
 			"Outfile": "/tmp/ls.out",
 			"Errfile": "/tmp/ls.err",
-			"StartTime": 4,
+			"StartTime": 0,
 			"StartRetries": 2
+		},
+		{
+			"Name": "Backdoor",
+			"Command": "/usr/bin/nc -l 8989",
+			"Outfile": "/tmp/nc.out",
+			"Errfile": "/tmp/nc.err",
+			"StartTime": 1,
+			"AutoStart": false,
+			"AutoRestart": "Unexpected"
 		}
 	]
 }

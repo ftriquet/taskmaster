@@ -5,7 +5,7 @@
 		{
 			"Name": "TailDeFou",
 			"Command": "/usr/bin/tail -f /tmp/FICHIER",
-			"NumProcs": 4,
+			"NumProcs": 2,
 			"Outfile": "/tmp/tail_log_out",
 			"Errfile": "/tmp/tail_log_err",
 			"WorkingDir": "/tmp",
@@ -17,9 +17,13 @@
 			"StopTime": 5
 		},
 		{
-			"Name": "Fail",
-			"Command": "/bin/cat /dev/random",
-			"NumProcs": 1
+			"Name": "Ping",
+			"Command": "ping gamekult.com",
+			"NumProcs": 1,
+			"StopSignal": 2,
+			"Autostart": false,
+			"AutoRestart": "Never",
+			"StartTime": 1
 		}
 	]
 }

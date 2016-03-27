@@ -1,4 +1,5 @@
 {
+	"Password":"73616c7574e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 	"ProgList":
 	[
 		{
@@ -17,8 +18,9 @@
 		},
 		{
 			"Name": "Fail",
-			"Command": "swag",
-			"NumProcs": 1
+			"Command": "plop",
+			"NumProcs": 1,
+			"StartRetries": 5
 		}
 	]
 }

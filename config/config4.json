@@ -16,19 +16,22 @@
 			"StopTime": 5
 		},
 		{
-			"Name": "Fail",
-			"Command": "/bin/ls",
+			"Name": "Make42sh",
+			"Command": "/usr/bin/make",
 			"NumProcs": 1,
-			"WorkingDir": "/usr",
-			"Outfile": "/tmp/ls.out",
-			"Errfile": "/tmp/ls.err",
-			"StartTime": 4,
-			"StartRetries": 2,
-			"Log": {
-				"FailAlert": 5,
-				"StatusAlert": "EXITED",
-				"Address": "ftriquet01gmail.com"
-			}
+			"WorkingDir": "/nfs/2015/f/ftriquet/projets/42sh",
+			"Outfile": "/tmp/make.out",
+			"Errfile": "/tmp/make.err",
+			"StartTime": 1,
+		},
+		{
+			"Name": "MakeFclean42sh",
+			"Command": "/usr/bin/make fclean",
+			"NumProcs": 1,
+			"WorkingDir": "/nfs/2015/f/ftriquet/projets/42sh",
+			"Outfile": "/tmp/makefclean.out",
+			"Errfile": "/tmp/makefclean.err",
+			"StartTime": 1,
 		}
 	]
 }
