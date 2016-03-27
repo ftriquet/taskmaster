@@ -177,9 +177,11 @@ func loadFileSlice(filename string) ([]*common.Process, error) {
 		return nil, err
 	}
 	programs = wrapper.ProgList
-	setPassword(wrapper.Password)
-	if getPassword() != "" {
-		setIsUserAuth(false)
+	if wrapper.Password != getPassword() {
+		setPassword(wrapper.Password)
+		if wrapper.Password != "" {
+			setIsUserAuth(false)
+		}
 	}
 	size := len(programs)
 	programs = make([]common.Process, size)
@@ -317,7 +319,7 @@ func generateHash() {
 }
 
 func (h *Handler) HasPassword(i bool, ret *bool) error {
-	*ret = (getPassword() != "")
+	*ret = ((getPassword() != "") && (getIsUserAuth() == false))
 	return nil
 }
 

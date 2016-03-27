@@ -229,11 +229,7 @@ func (h *Handler) ReloadConfig(param string, res *[]common.ProcStatus) error {
 	h.Pause <- true
 	h.removeProcs(newConf)
 	h.updateWhatMustBeUpdated(newConf)
-	isAuthCpy := getIsUserAuth()
-	/* autostart processes even if user is not auth in case of SIGHUP */
-	setIsUserAuth(true)
 	h.handleAutoStart()
-	setIsUserAuth(isAuthCpy)
 	h.Continue <- true
 	*res = []common.ProcStatus{}
 	return nil
@@ -267,10 +263,14 @@ func (h *Handler) Shutdown(param string, res *[]common.ProcStatus) error {
 }
 
 func (h *Handler) handleAutoStart() {
+	isAuthCpy := getIsUserAuth()
+	/* autostart processes even if user is not auth in case of SIGHUP */
+	setIsUserAuth(true)
 	for k, v := range g_procs {
 		var useless []common.ProcStatus
 		if v.AutoStart {
 			h.StartProc(k, &useless)
 		}
 	}
+	setIsUserAuth(isAuthCpy)
 }
