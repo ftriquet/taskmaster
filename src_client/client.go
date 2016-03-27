@@ -71,7 +71,7 @@ func checkAuth(client *rpc.Client) {
 		client.Close()
 		os.Exit(1)
 	} else {
-		fmt.Printf("\nAuthentication succeded\n")
+		fmt.Printf("\nAuthentication succeeded\n")
 	}
 }
 

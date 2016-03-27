@@ -108,6 +108,10 @@ func (h *Handler) handleProcess(proc *common.Process, state chan error) {
 
 func (h *Handler) StartProc(param string, res *[]common.ProcStatus) error {
 	var statuses []common.ProcStatus
+
+	if !h.isUserAuth() {
+		return errors.New("You are not authenticated. Restart your client")
+	}
 	proc, exists := g_procs[param]
 	if !exists {
 		logw.Warning("Process not found: %s", param)
@@ -138,6 +142,9 @@ func (h *Handler) StartProc(param string, res *[]common.ProcStatus) error {
 }
 
 func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
+	if !h.isUserAuth() {
+		return errors.New("You are not authenticated. Restart your client")
+	}
 	proc, exists := g_procs[param]
 	if !exists {
 		logw.Warning("Process not found: %s", param)
@@ -188,6 +195,9 @@ func (h *Handler) StopProc(param string, res *[]common.ProcStatus) error {
 }
 
 func (h *Handler) GetLog(nbLines int, res *[]string) error {
+	if !h.isUserAuth() {
+		return errors.New("You are not authenticated. Restart your client")
+	}
 	file, err := ioutil.ReadFile(h.logfile)
 	if err != nil {
 		return err
@@ -208,22 +218,31 @@ func (h *Handler) GetLog(nbLines int, res *[]string) error {
 }
 
 func (h *Handler) ReloadConfig(param string, res *[]common.ProcStatus) error {
-
+	if !h.isUserAuth() {
+		return errors.New("You are not authenticated. Restart your client")
+	}
 	newConf, err := LoadFile(h.configFile)
 	if err != nil {
-		logw.Error("Unable to laod config file: %s", h.configFile)
+		logw.Error("Unable to load config file: %s", h.configFile)
 		return err
 	}
 	h.Pause <- true
 	h.removeProcs(newConf)
 	h.updateWhatMustBeUpdated(newConf)
+	isAuthCpy := getIsUserAuth()
+	/* autostart processes even if user is not auth in case of SIGHUP */
+	setIsUserAuth(true)
 	h.handleAutoStart()
+	setIsUserAuth(isAuthCpy)
 	h.Continue <- true
 	*res = []common.ProcStatus{}
 	return nil
 }
 
 func (h *Handler) RestartProc(param string, res *[]common.ProcStatus) error {
+	if !h.isUserAuth() {
+		return errors.New("You are not authenticated. Restart your client")
+	}
 	err := h.StopProc(param, res)
 	if err == nil {
 		err = h.StartProc(param, res)
@@ -232,7 +251,10 @@ func (h *Handler) RestartProc(param string, res *[]common.ProcStatus) error {
 }
 
 func (h *Handler) Shutdown(param string, res *[]common.ProcStatus) error {
-	*res = []common.ProcStatus{{State: "Server has shutddown"}}
+	if !h.isUserAuth() {
+		return errors.New("You are not authenticated. Restart your client")
+	}
+	*res = []common.ProcStatus{{State: "Server has shutd down"}}
 	lock.Lock()
 	for k, proc := range g_procs {
 		s := proc.GetProcStatus().State

@@ -381,7 +381,7 @@ func (p *Process) Start(started, processEnd chan bool) {
 	}
 	err = p.Cmd.Start()
 	if err != nil {
-		fmt.Println(err)
+		logw.Error(err.Error())
 		started <- false
 		return
 	}

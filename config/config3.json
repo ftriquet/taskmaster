@@ -10,7 +10,7 @@
 			"StartTime": 1,
 			"WorkingDir": "/tmp",
 			"StopSignal": 2,
-			"Autostart": true,
+			"AutoStart": true,
 			"ExitCodes": [0, 130],
 			"AutoRestart": "Unexpected",
 			"StartRetries": 5,

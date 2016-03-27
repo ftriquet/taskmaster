@@ -10,11 +10,11 @@
 			"Errfile": "/tmp/tail_log_err",
 			"WorkingDir": "/tmp",
 			"StopSignal": 2,
-			"Autostart": true,
+			"AutoStart": true,
 			"ExitCodes": [0, 130],
 			"AutoRestart": "Unexpected",
 			"StartRetries": 5,
-			"StopTime": 5
+			"StopTime": 1
 		},
 		{
 			"Name": "Fail",

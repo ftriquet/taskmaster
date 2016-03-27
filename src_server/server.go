@@ -28,10 +28,12 @@ import (
 type MethodFunc func(string, *[]common.ProcStatus) error
 
 var (
-	g_procs  map[string]*common.Process
-	lock     = new(sync.RWMutex)
-	passlock = new(sync.RWMutex)
-	password string
+	g_procs    map[string]*common.Process
+	lock       = new(sync.RWMutex)
+	passlock   = new(sync.RWMutex)
+	isauthlock = new(sync.RWMutex)
+	password   string
+	isUserAuth bool
 )
 
 type Handler struct {
@@ -157,7 +159,6 @@ func listenSIGHUP(filename string, h *Handler) {
 			h.ReloadConfig("lol", &[]common.ProcStatus{})
 		}
 	}()
-
 }
 
 func loadFileSlice(filename string) ([]*common.Process, error) {
@@ -177,6 +178,9 @@ func loadFileSlice(filename string) ([]*common.Process, error) {
 	}
 	programs = wrapper.ProgList
 	setPassword(wrapper.Password)
+	if getPassword() != "" {
+		setIsUserAuth(false)
+	}
 	size := len(programs)
 	programs = make([]common.Process, size)
 	for i := 0; i < size; i++ {
@@ -243,6 +247,9 @@ func sliceContains(s []string, name string) bool {
 }
 
 func (h *Handler) GetStatus(params []string, result *[]common.ProcStatus) error {
+	if !h.isUserAuth() {
+		return errors.New("You are not authenticated. Restart your client")
+	}
 	res := []common.ProcStatus{}
 	var procList []string
 	lock.RLock()
@@ -310,8 +317,41 @@ func generateHash() {
 }
 
 func (h *Handler) HasPassword(i bool, ret *bool) error {
-	*ret = (password != "")
+	*ret = (getPassword() != "")
 	return nil
+}
+
+func (h *Handler) isUserAuth() bool {
+	var has bool
+	h.HasPassword(false, &has)
+	if !has {
+		return true
+	} else {
+		return getIsUserAuth()
+	}
+}
+
+func setIsUserAuth(is bool) {
+	isauthlock.Lock()
+	defer isauthlock.Unlock()
+	isUserAuth = is
+}
+
+func getIsUserAuth() bool {
+	isauthlock.RLock()
+	defer isauthlock.RUnlock()
+	return isUserAuth
+}
+
+func setPassword(pass string) {
+	passlock.Lock()
+	password = pass
+	passlock.Unlock()
+}
+func getPassword() string {
+	passlock.RLock()
+	defer passlock.RUnlock()
+	return password
 }
 
 func (h *Handler) Authenticate(pass string, ret *bool) error {
@@ -319,8 +359,10 @@ func (h *Handler) Authenticate(pass string, ret *bool) error {
 	hashedPass := fmt.Sprintf("%x", hash.Sum([]byte(pass)))
 	if hashedPass == password {
 		*ret = true
+		setIsUserAuth(true)
 	} else {
 		*ret = false
+		setIsUserAuth(false)
 	}
 	return nil
 }
@@ -344,17 +386,6 @@ func checkPassword(testing bool) bool {
 		return true
 	}
 	return false
-}
-
-func setPassword(pass string) {
-	passlock.Lock()
-	password = pass
-	passlock.Unlock()
-}
-func getPassword() string {
-	passlock.RLock()
-	defer passlock.RUnlock()
-	return password
 }
 
 func main() {
@@ -411,11 +442,7 @@ func main() {
 	h.handleAutoStart()
 	listenSIGHUP(*configFile, h)
 	if *httpFlag {
-		var a *BasicAuth
-		if getPassword() != "" {
-			a = NewBasicAuth()
-		}
-		http.HandleFunc("/", generateRenderer(a, h))
+		http.HandleFunc("/", generateRenderer(h))
 	}
 	log.Fatal(http.Serve(listener, nil))
 }

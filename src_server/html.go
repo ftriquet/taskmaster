@@ -47,16 +47,22 @@ func actionHandler(w http.ResponseWriter, r *http.Request, h *Handler) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func generateRenderer(a *BasicAuth, h *Handler) http.HandlerFunc {
-	if a != nil {
-		return func(w http.ResponseWriter, r *http.Request) {
+func generateRenderer(h *Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		a := generateBasicAuth()
+		if a != nil {
 			a.BasicAuthHandler(w, r, h)
-		}
-	} else {
-		return func(w http.ResponseWriter, r *http.Request) {
+		} else {
 			handleRequest(w, r, h)
 		}
 	}
+}
+
+func generateBasicAuth() *BasicAuth {
+	if getPassword() != "" {
+		return NewBasicAuth()
+	}
+	return nil
 }
 
 func handleRequest(w http.ResponseWriter, r *http.Request, h *Handler) {
@@ -68,7 +74,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request, h *Handler) {
 }
 
 func NewBasicAuth() *BasicAuth {
-	return &BasicAuth{Login: "taskmaster", Password: password}
+	return &BasicAuth{Login: "taskmaster", Password: getPassword()}
 }
 
 func (a *BasicAuth) Authenticate(w http.ResponseWriter, r *http.Request) {

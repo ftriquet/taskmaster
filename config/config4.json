@@ -9,7 +9,7 @@
 			"Errfile": "/tmp/norminette.err",
 			"WorkingDir": "/tmp",
 			"StopSignal": 2,
-			"Autostart": true,
+			"AutoStart": true,
 			"ExitCodes": [0, 130],
 			"AutoRestart": "Unexpected",
 			"StartRetries": 5,
@@ -22,7 +22,7 @@
 			"WorkingDir": "/nfs/2015/f/ftriquet/projets/42sh",
 			"Outfile": "/tmp/make.out",
 			"Errfile": "/tmp/make.err",
-			"StartTime": 1,
+			"StartTime": 1
 		},
 		{
 			"Name": "MakeFclean42sh",
@@ -31,7 +31,7 @@
 			"WorkingDir": "/nfs/2015/f/ftriquet/projets/42sh",
 			"Outfile": "/tmp/makefclean.out",
 			"Errfile": "/tmp/makefclean.err",
-			"StartTime": 1,
+			"StartTime": 1
 		}
 	]
 }

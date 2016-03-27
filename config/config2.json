@@ -10,7 +10,7 @@
 			"Errfile": "/tmp/tail_log_err",
 			"WorkingDir": "/tmp",
 			"StopSignal": 2,
-			"Autostart": true,
+			"AutoStart": true,
 			"ExitCodes": [0, 130],
 			"AutoRestart": "Unexpected",
 			"StartRetries": 5,
@@ -21,7 +21,7 @@
 			"Command": "ping gamekult.com",
 			"NumProcs": 1,
 			"StopSignal": 2,
-			"Autostart": false,
+			"AutoStart": false,
 			"AutoRestart": "Never",
 			"StartTime": 1
 		}
