@@ -1,15 +1,18 @@
 clientname = client
 servername = server
 
-SRC_SERVER=$(shell ls src_server/{methods,server,html}.go)
-SRC_CLIENT=$(shell ls src_client/{method,client}.go)
-
 all: server client
-server: $(SRC_SERVER)
+
+server:
 	go build -o $(servername) taskmaster/src_server
 
-client: $(SRC_CLIENT)
+
+client:
 	go build -o $(clientname) taskmaster/src_client
+
+%.go: .tmp/%.gobj
+	mkdir -p .tmp
+	touch $<
 
 clean:
 	rm -rf $(servername) $(clientname)
