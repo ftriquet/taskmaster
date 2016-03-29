@@ -319,7 +319,7 @@ func generateHash() {
 }
 
 func (h *Handler) HasPassword(i bool, ret *bool) error {
-	*ret = ((getPassword() != "") && (getIsUserAuth() == false))
+	*ret = (getPassword() != "")
 	return nil
 }
 
